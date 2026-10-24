@@ -1,0 +1,20 @@
+.venv/
+.uv-cache/
+__pycache__/
+.pytest_cache/
+.env
+.env.*
+!.env.example
+artifacts/
+*.egg-info/
+.DS_Store
+*.pem
+*.key
+id_rsa
+id_ed25519
+
+# Local account inputs, generated knowledge graph, and deployment packages.
+/planning/rounds/*PRIVATE*
+/graphify-out/
+/planning/site-build*.tar.gz
+

@@ -1,0 +1,30 @@
+{
+  "url": "https://www.tpex.org.tw/openapi/v1/tpex_3insti_daily_trading",
+  "fetched_at": "2026-10-09T06:30:46.290563+00:00",
+  "http_status": 200,
+  "rows": 892,
+  "actual_shape": "list",
+  "observed_fields": [
+    "Date",
+    "SecuritiesCompanyCode",
+    "CompanyName",
+    "Foreign Investors include Mainland Area Investors (Foreign Dealers excluded)-Total Buy",
+    " Foreign Investors include Mainland Area Investors (Foreign Dealers excluded)-Total Sell",
+    "Foreign Investors include Mainland Area Investors (Foreign Dealers excluded)-Difference",
+    "Foreign Dealers-Total Buy",
+    "Foreign Dealers-TotalSell",
+    "ForeignDealers-Difference",
+    "ForeignInvestorsIncludeMainlandAreaInvestors-TotalBuy",
+    "ForeignInvestorsIncludeMainlandAreaInvestors-TotalSell",
+    "ForeignInvestorsInclude MainlandAreaInvestors-Difference",
+    "SecuritiesInvestmentTrustCompanies-TotalBuy",
+    "SecuritiesInvestmentTrustCompanies-TotalSell",
+    "SecuritiesInvestmentTrustCompanies-Difference",
+    "Dealers-TotalBuy",
+    "Dealers-TotalSell",
+    "Dealers-Difference",
+    "Dealers -TotalSell",
+    "TotalDifference"
+  ],
+  "sha256": "8325f809040c52e07e45634c4608d5e7e71e92616213d77b790ca6cde69e0b5c"
+}

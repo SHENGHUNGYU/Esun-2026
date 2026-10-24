@@ -1,0 +1,170 @@
+[
+  {
+    "path": "/tpex_mainboard_quotes",
+    "url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes",
+    "fetched_at": "2026-10-09T06:25:59.295946+00:00",
+    "http_status": 200,
+    "response_type": "list",
+    "row_count": 1011,
+    "observed_fields": [
+      "Date",
+      "SecuritiesCompanyCode",
+      "CompanyName",
+      "Close",
+      "Change",
+      "Open",
+      "High",
+      "Low",
+      "TradingShares",
+      "TransactionAmount",
+      "TransactionNumber",
+      "LatestBidPrice",
+      "LatesAskPrice",
+      "Capitals",
+      "NextLimitUp",
+      "NextLimitDown"
+    ],
+    "sample_dates": {
+      "Date": [
+        "1151008"
+      ]
+    },
+    "sha256": "32b36a57cb91934e099298c7b327c52e3182a53344b1be1aa820d49296eec384",
+    "response_headers": {
+      "Server": "nginx",
+      "Date": "Fri, 09 Oct 2026 06:25:58 GMT",
+      "Content-Type": "application/json",
+      "Content-Length": "356959",
+      "Connection": "close",
+      "Last-Modified": "Fri, 09 Oct 2026 06:00:05 GMT",
+      "ETag": "\"6ac882e5-5725f\"",
+      "Content-Disposition": "attachment;filename=tpex_mainboard_quotes.json",
+      "Accept-Ranges": "bytes",
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    }
+  },
+  {
+    "path": "/tpex_index",
+    "url": "https://www.tpex.org.tw/openapi/v1/tpex_index",
+    "fetched_at": "2026-10-09T06:25:59.641774+00:00",
+    "http_status": 200,
+    "response_type": "list",
+    "row_count": 6,
+    "observed_fields": [
+      "Date",
+      "Open",
+      "High",
+      "Low",
+      "Close",
+      "Change"
+    ],
+    "sample_dates": {
+      "Date": [
+        "20261001",
+        "20261002",
+        "20261005",
+        "20261006",
+        "20261007",
+        "20261008"
+      ]
+    },
+    "sha256": "60efcd179cb7097141950d5efc4a304849d68bf3e8db6addfe8848f794f4b622",
+    "response_headers": {
+      "Server": "nginx",
+      "Date": "Fri, 09 Oct 2026 06:25:59 GMT",
+      "Content-Type": "application/json",
+      "Content-Length": "611",
+      "Connection": "close",
+      "Last-Modified": "Fri, 09 Oct 2026 06:00:08 GMT",
+      "ETag": "\"6ac882e8-263\"",
+      "Content-Disposition": "attachment;filename=tpex_index.json",
+      "Accept-Ranges": "bytes",
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    }
+  },
+  {
+    "path": "/mopsfin_t187ap05_O",
+    "url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap05_O",
+    "fetched_at": "2026-10-09T06:26:00.077597+00:00",
+    "http_status": 200,
+    "response_type": "list",
+    "row_count": 892,
+    "observed_fields": [
+      "出表日期",
+      "資料年月",
+      "公司代號",
+      "公司名稱",
+      "產業別",
+      "營業收入-當月營收",
+      "營業收入-上月營收",
+      "營業收入-去年當月營收",
+      "營業收入-上月比較增減(%)",
+      "營業收入-去年同月增減(%)",
+      "累計營業收入-當月累計營收",
+      "累計營業收入-去年累計營收",
+      "累計營業收入-前期比較增減(%)",
+      "備註"
+    ],
+    "sample_dates": {
+      "出表日期": [
+        "1150917"
+      ],
+      "資料年月": [
+        "11508"
+      ]
+    },
+    "sha256": "f00e3fdd7060db0db943b79dc53d732df940d038ef208a1b075363e06660bd92",
+    "response_headers": {
+      "Server": "nginx",
+      "Date": "Fri, 09 Oct 2026 06:25:59 GMT",
+      "Content-Type": "application/json",
+      "Content-Length": "496547",
+      "Connection": "close",
+      "Last-Modified": "Fri, 09 Oct 2026 06:04:56 GMT",
+      "ETag": "\"6ac88408-793a3\"",
+      "Content-Disposition": "attachment;filename=mopsfin_t187ap05_O.json",
+      "Accept-Ranges": "bytes",
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    }
+  },
+  {
+    "path": "/mopsfin_t187ap04_O",
+    "url": "https://www.tpex.org.tw/openapi/v1/mopsfin_t187ap04_O",
+    "fetched_at": "2026-10-09T06:26:00.415684+00:00",
+    "http_status": 200,
+    "response_type": "list",
+    "row_count": 63,
+    "observed_fields": [
+      "Date",
+      "發言日期",
+      "發言時間",
+      "SecuritiesCompanyCode",
+      "CompanyName",
+      "主旨",
+      "符合條款",
+      "事實發生日",
+      "說明"
+    ],
+    "sample_dates": {
+      "Date": [
+        "1151009"
+      ],
+      "發言日期": [
+        "1151008"
+      ]
+    },
+    "sha256": "e506e7f240dffe5f58dc8e3a1baac12e0d7d8ca499e0793c42bd205541f7b5f3",
+    "response_headers": {
+      "Server": "nginx",
+      "Date": "Fri, 09 Oct 2026 06:26:00 GMT",
+      "Content-Type": "application/json",
+      "Content-Length": "89288",
+      "Connection": "close",
+      "Last-Modified": "Fri, 09 Oct 2026 06:00:25 GMT",
+      "ETag": "\"6ac882f9-15cc8\"",
+      "Content-Disposition": "attachment;filename=mopsfin_t187ap04_O.json",
+      "Accept-Ranges": "bytes",
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    }
+  }
+]

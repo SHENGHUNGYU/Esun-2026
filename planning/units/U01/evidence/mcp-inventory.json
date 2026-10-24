@@ -1,0 +1,7 @@
+{
+  "configured_server_names": [
+    "node_repl",
+    "computer-use"
+  ],
+  "note": "僅讀取 config 的 server 標籤；設定不等於本次對話已接通，沒有讀取或輸出金鑰。"
+}

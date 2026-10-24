@@ -1,0 +1,27 @@
+{
+  "checked_at": "2026-10-08T15:38:37.097693+08:00",
+  "architecture": {
+    "value": "arm64",
+    "returncode": 0
+  },
+  "cpu": {
+    "value": "Apple M4 Pro",
+    "returncode": 0
+  },
+  "memory_bytes": {
+    "value": "25769803776",
+    "returncode": 0
+  },
+  "tools": {
+    "python3": true,
+    "uv": true,
+    "ollama": true,
+    "nvidia-smi": false,
+    "ssh": true,
+    "node": true
+  },
+  "ollama": {
+    "error_type": "URLError",
+    "status": "unreachable"
+  }
+}

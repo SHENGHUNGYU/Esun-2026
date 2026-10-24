@@ -1,0 +1,9 @@
+{
+  "version": "official-event-gate-v1",
+  "maximum_capture_age_hours": 36,
+  "avoid_new_buys_during_disposition": true,
+  "avoid_new_buys_in_altered_trading": true,
+  "attention_blocks_buys": false,
+  "refresh_hour_on_trade_eve": 19,
+  "refresh_minute_on_trade_eve": 30
+}

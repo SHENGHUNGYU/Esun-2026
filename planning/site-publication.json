@@ -1,0 +1,37 @@
+{
+  "status": "succeeded",
+  "url": "https://esun-agent-two-week-plan.nelson569477.chatgpt.site",
+  "audience": "private",
+  "project_id": "appgprj_6ac5f456cf048191ab20a4c07880cfd8",
+  "deployment_id": "appgdep_6acf33198bd88191b5423ae1df18a58a",
+  "commit_sha": "7c30ae236da08e966817bc6430386b7769b99d33",
+  "version_id": "appgprj_6ac5f456cf048191ab20a4c07880cfd8~appgver_a7fd1ef94a288191b154d16f6f6318fc",
+  "source": "DAILY_TODO.md",
+  "current_unit": "U01",
+  "unit_status": "待驗收",
+  "ui_updated_on": "2026-10-09",
+  "ui_pages": [
+    "#daily",
+    "#roadmap",
+    "#data",
+    "#apis"
+  ],
+  "reply_form_added_on": "2026-10-09",
+  "reply_form_route": "#daily/U01/reply",
+  "decision_data_added_on": "2026-10-09",
+  "decision_data_route": "#data",
+  "decision_data_source": "decision-data.json",
+  "decision_data_items": 66,
+  "api_route": "#apis",
+  "api_endpoints": 368,
+  "api_sources": {
+    "TWSE": 143,
+    "TPEx": 225
+  },
+  "api_updated_on": "2026-10-09",
+  "langgraph_draft_route": "#doc=14-langgraph-phase1.md",
+  "langgraph_draft_updated_on": "2026-10-14",
+  "data_source_csv": "implementation-data-sources.csv",
+  "data_source_records": 561,
+  "data_source_updated_on": "2026-10-14"
+}

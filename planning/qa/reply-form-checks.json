@@ -1,0 +1,24 @@
+{
+  "checked_on": "2026-10-09",
+  "source": "DAILY_TODO.md",
+  "units_with_forms": 14,
+  "min_question_count": 4,
+  "min_preparation_count": 3,
+  "checks": [
+    "filled multi-line answers preserved in formatted reply",
+    "blank answers marked 待補／待確認",
+    "no approval preselected",
+    "native copy succeeded and clipboard matched test answer",
+    "draft isolated per unit and retained across navigation",
+    "reload clears drafts as documented",
+    "explicit list and partial acceptance only modify generated text",
+    "390px mobile page has no horizontal overflow"
+  ],
+  "python_tests": 5,
+  "node_tests": 4,
+  "limitations": [
+    "browser-denied clipboard fallback implemented; not forced in UI test",
+    "drafts are not persisted across reload or closing page"
+  ],
+  "unit_statuses_unchanged": true
+}

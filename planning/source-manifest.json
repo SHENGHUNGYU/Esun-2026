@@ -1,0 +1,52 @@
+[
+  {
+    "path": "docs/D-Plan 撰寫指南 v4.2.md",
+    "sha256": "483365840a72bde76a6103336d8949d25d6e56ad652b26b25034ef58fe9509c6",
+    "bytes": 15129
+  },
+  {
+    "path": "docs/D-Plan.schema_v4.2.json",
+    "sha256": "8787f041c3acc3e91b3433d2a4d5edcf75b4a09e999416f64eea7627d93d36bd",
+    "bytes": 17504
+  },
+  {
+    "path": "docs/D-Plan_TEAM_042_2026-10-27.json",
+    "sha256": "44a6bbfd867e5235ab32322d1937a261b9ceed792ba20ac77cac6be83579ba7c",
+    "bytes": 7845
+  },
+  {
+    "path": "docs/D-Plan_TEAM_043_2026-10-27.json",
+    "sha256": "86f3856ba78f55b626a11afac596031e666e4529442e1f92ef0ade99699d5639",
+    "bytes": 7957
+  },
+  {
+    "path": "docs/玉山 AI 競技場 比賽辦法 更新.pdf",
+    "sha256": "c788d458a6373f2739769161cfa30455a7e47f49eb7263943620a0007b95a6f4",
+    "bytes": 437672
+  },
+  {
+    "path": "docs/玉山挑戰賽 ETF 投資策略範例.pdf",
+    "sha256": "bca9df0ca964b4f258959a42500716be6199343093874b6c993154edbb6e7a60",
+    "bytes": 96434
+  },
+  {
+    "path": "docs/玉山挑戰賽 ETF 投資策略說明.docx",
+    "sha256": "55c17d9c867026d939c49f5871f0c9f0bcc0e1ffc6b18b18a36e7c9837e490df",
+    "bytes": 18043
+  },
+  {
+    "path": "docs/玉山挑戰賽 Google Token Credit 領取方式.pdf",
+    "sha256": "d2cca728ae81428082edfa7dbf7bd466194aaed7a5f9eb294bd8d206c08b9b87",
+    "bytes": 332841
+  },
+  {
+    "path": "docs/玉山挑戰賽 主動型ETF列表 v1.pdf",
+    "sha256": "d19cb228af7569b662cc0cfd741c726a4016ec3cc37536bf1c1d7bd891ec49d5",
+    "bytes": 66168
+  },
+  {
+    "path": "docs/玉山挑戰賽 投資組合 150檔清單.pdf",
+    "sha256": "b6a17beb84cfbfe3db8629d6af8c2938b4443114de0d82e333bc487e4c7d8bd6",
+    "bytes": 131318
+  }
+]

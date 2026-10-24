@@ -1,0 +1,662 @@
+{
+  "as_of_review_date": "2026-10-24",
+  "scope": "30檔官方指定ETF持股來源可取得性盤點；不是持股資料檔",
+  "target_holdings_date": "2026-10-22",
+  "count": 30,
+  "status_counts": {
+    "official_entry_only": 23,
+    "partial_table_observed": 3,
+    "at_least_15_rows_observed": 4
+  },
+  "actual_machine_snapshots_obtained": 0,
+  "target_date_validated_count": 0,
+  "active_share_ready": false,
+  "finmind": {
+    "official_document_url": "https://finmind.github.io/llms-full.txt",
+    "holding_dataset": "TaiwanStockActiveETFHolding",
+    "holding_tier": "Sponsor",
+    "info_dataset": "TaiwanStockActiveETFInfo",
+    "info_tier": "Free",
+    "change_tier": "Sponsor",
+    "coverage_verified_for_all_30": false,
+    "paid_api_called": false,
+    "known_limits": [
+      "每ETF起始日不同",
+      "整體資料起日2025-05-05不代表每ETF皆從該日有資料",
+      "Free清單包含上市上櫃主動ETF，但清單不是持股覆蓋保證",
+      "持股變化包含申贖等比例變化，不等於經理人主動淨買賣"
+    ]
+  },
+  "items": [
+    {
+      "code": "00980A",
+      "name": "主動野村臺灣優選",
+      "issuer": "野村投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.nomurafunds.com.tw/ETFWEB/product-description?fundNo=00980A&tab=Shareholding",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "持股頁已定位；直接讀取只回傳動態頁殼，未驗證15筆與資料日期。",
+      "source_urls": [
+        "https://www.nomurafunds.com.tw/ETFWEB/product-description?fundNo=00980A&tab=Shareholding",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00982A",
+      "name": "主動群益台灣強棒",
+      "issuer": "群益投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.capitalfund.com.tw/etf/product/detail/399/buyback",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "partial_table_observed",
+      "observed_data_date": "2026-10-22",
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "公開頁可見10筆股票及權重、股數；展開全部／下載尚未驗證，不能替代前15大。",
+      "source_urls": [
+        "https://www.capitalfund.com.tw/etf/product/detail/399/buyback",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00981A",
+      "name": "主動統一台股成長",
+      "issuer": "統一投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.ezmoney.com.tw/events/2025TGA/00981A-ezguide.pdf",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "僅核對官方產品指南；主站目前讀取不可用，日持股入口未驗證。",
+      "source_urls": [
+        "https://www.ezmoney.com.tw/events/2025TGA/00981A-ezguide.pdf",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00983A",
+      "name": "主動中信 ARK 創新",
+      "issuer": "中國信託投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.ctbcinvestments.com.tw/Product/List?Kind=1&ProductEtfNo=27",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "官方基金總覽包含代碼；直接讀取要求JavaScript，日持股明細尚未驗證。",
+      "source_urls": [
+        "https://www.ctbcinvestments.com.tw/Product/List?Kind=1&ProductEtfNo=27",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00984A",
+      "name": "主動安聯台灣高息",
+      "issuer": "安聯投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://etf.allianzgi.com.tw/eventsite/00984A/",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "由安聯官網連出產品頁；產品行銷頁不是每日持股明細。",
+      "source_urls": [
+        "https://etf.allianzgi.com.tw/eventsite/00984A/",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00985A",
+      "name": "主動野村台灣 50",
+      "issuer": "野村投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.nomurafunds.com.tw/ETFWEB/product-description?fundNo=00985A&tab=Shareholding",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "partial_table_observed",
+      "observed_data_date": "2026-09-30",
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "索引可見10筆股票與查看更多；日期欄空白，資產／淨值對應9/30，仍須下載確認實際持股基準日。",
+      "source_urls": [
+        "https://www.nomurafunds.com.tw/ETFWEB/product-description?fundNo=00985A&tab=Shareholding",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00986A",
+      "name": "主動台新龍頭成長",
+      "issuer": "台新投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.tsit.com.tw/ETF/Home/ETFSeriesDetail/00986A",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "at_least_15_rows_observed",
+      "observed_data_date": "2026-10-21",
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "再次直接讀取可見36筆跨國股票及90.5636%合計；10/22預估單位與10/21申贖差額同頁，持股基準日未獨立明示，須核對10/22實際評價日。",
+      "source_urls": [
+        "https://www.tsit.com.tw/ETF/Home/ETFSeriesDetail/00986A",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00989A",
+      "name": "主動摩根美國科技",
+      "issuer": "摩根投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://am.jpmorgan.com/tw/zh/asset-management/twetf/funds/jpmorgan-us-tech-leaders-etf/",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "已確認官方產品入口；本次未取得每日完整投資組合。月報前十大不可替代。",
+      "source_urls": [
+        "https://am.jpmorgan.com/tw/zh/asset-management/twetf/funds/jpmorgan-us-tech-leaders-etf/",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00988A",
+      "name": "主動統一全球創新",
+      "issuer": "統一投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.ezmoney.com.tw/events/00988A/00988A-trading-guide.pdf",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "官方申購指南可定位產品；尚未驗證每日持股來源。",
+      "source_urls": [
+        "https://www.ezmoney.com.tw/events/00988A/00988A-trading-guide.pdf",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00991A",
+      "name": "主動復華未來 50",
+      "issuer": "復華投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://vpx.fhtrust.com.tw/ETF/etf_data_scale",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "官方規模與費用總表包含代碼；持股入口尚未驗證。",
+      "source_urls": [
+        "https://vpx.fhtrust.com.tw/ETF/etf_data_scale",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00990A",
+      "name": "主動元大 AI 新經濟",
+      "issuer": "元大投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.yuantaetfs.com/product/detail/00990A/Basic_information",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "官方基本資料可見持股比重分頁；未實際展開取得明細。",
+      "source_urls": [
+        "https://www.yuantaetfs.com/product/detail/00990A/Basic_information",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00987A",
+      "name": "主動台新優勢成長",
+      "issuer": "台新投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.tsit.com.tw/ETF/Home/Pcf/00987A?DataDate=2026-10-13&FundType=ALL",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "at_least_15_rows_observed",
+      "observed_data_date": "2026-10-12",
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "官方PCF可讀28筆及99.1448%合計；URL查詢日10/13而申贖價差標10/12，不能把URL當持股日，需核對10/22。",
+      "source_urls": [
+        "https://www.tsit.com.tw/ETF/Home/Pcf/00987A?DataDate=2026-10-13&FundType=ALL",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00992A",
+      "name": "主動群益科技創新",
+      "issuer": "群益投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.capitalfund.com.tw/etf/product/detail/500/buyback",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "partial_table_observed",
+      "observed_data_date": "2026-10-22",
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "官方頁僅展開10筆（含重複視覺表格），有展開全部按鈕；未驗證下載或其餘持股。",
+      "source_urls": [
+        "https://www.capitalfund.com.tw/etf/product/detail/500/buyback",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00994A",
+      "name": "主動第一金台股優",
+      "issuer": "第一金投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.fsitc.com.tw/act/202512_994AETF/article-list.html",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "官方產品頁已核對；月報前十大不是每日前15大，日持股入口未驗證。",
+      "source_urls": [
+        "https://www.fsitc.com.tw/act/202512_994AETF/article-list.html",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00995A",
+      "name": "主動中信台灣卓越",
+      "issuer": "中國信託投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.ctbcinvestments.com.tw/Product/List?Kind=1&ProductEtfNo=27",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "官方總覽包含代碼；日持股明細尚未驗證。",
+      "source_urls": [
+        "https://www.ctbcinvestments.com.tw/Product/List?Kind=1&ProductEtfNo=27",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00993A",
+      "name": "主動安聯台灣",
+      "issuer": "安聯投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://etf.allianzgi.com.tw/eventsite/00993A/",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "由安聯官網核對的產品入口；日持股明細未取得。",
+      "source_urls": [
+        "https://etf.allianzgi.com.tw/eventsite/00993A/",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00996A",
+      "name": "主動兆豐台灣豐收",
+      "issuer": "兆豐投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.megafunds.com.tw/MEGA/etf/etf_product.aspx?id=23",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "at_least_15_rows_observed",
+      "observed_data_date": "2026-09-11",
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "官方搜尋索引可見至少16筆及9/11日期；直接重抓返回403，未繞過限制，需公開下載或授權替代來源。",
+      "source_urls": [
+        "https://www.megafunds.com.tw/MEGA/etf/etf_product.aspx?id=23",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00400A",
+      "name": "主動國泰動能高息",
+      "issuer": "國泰投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.cathaysite.com.tw/ETF/purchase?code=EA&name=Cathay+Taiwan+High+Dividend+Momentum+Active+ETF",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": "2026-09-10",
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "官方PCF顯示淨值及查看基金持股權重，但本次文字頁未呈現持股列。",
+      "source_urls": [
+        "https://www.cathaysite.com.tw/ETF/purchase?code=EA&name=Cathay+Taiwan+High+Dividend+Momentum+Active+ETF",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00401A",
+      "name": "主動摩根台灣鑫收",
+      "issuer": "摩根投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://am.jpmorgan.com/tw/zh/asset-management/twetf/funds/jpmorgan-tw-equity-high-income-etf/",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "已核對官方產品入口；每日持股及衍生品分流尚未驗證。",
+      "source_urls": [
+        "https://am.jpmorgan.com/tw/zh/asset-management/twetf/funds/jpmorgan-tw-equity-high-income-etf/",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00997A",
+      "name": "主動群益美國增長",
+      "issuer": "群益投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.capitalfund.com.tw/ETF_Area/Product_en",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "官方英文ETF總覽含代碼與名稱；每日持股明細未取得，不推造產品內碼。",
+      "source_urls": [
+        "https://www.capitalfund.com.tw/ETF_Area/Product_en",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00999A",
+      "name": "主動野村臺灣高息",
+      "issuer": "野村投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.nomurafunds.com.tw/ETFWEB/overview",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "官方ETF總覽含代碼；未驗證其個別日持股分頁。",
+      "source_urls": [
+        "https://www.nomurafunds.com.tw/ETFWEB/overview",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00403A",
+      "name": "主動統一升級 50",
+      "issuer": "統一投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.ezmoney.com.tw/events/2026elite50/00403A-ezguide.pdf",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "僅核對官方產品指南；每日持股入口未驗證。",
+      "source_urls": [
+        "https://www.ezmoney.com.tw/events/2026elite50/00403A-ezguide.pdf",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00402A",
+      "name": "主動安聯美國科技",
+      "issuer": "安聯投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://etf.allianzgi.com.tw/eventsite/00402A/",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "由安聯官網核對產品入口；每日持股明細未取得。",
+      "source_urls": [
+        "https://etf.allianzgi.com.tw/eventsite/00402A/",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00404A",
+      "name": "主動聯博動能 50",
+      "issuer": "聯博投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.abfunds.com.tw/zh-tw/funds/etf/active/equities/abitl-taiwan-momentum-equity-premium-income-50-active-etf.-.TW00000404A5.html",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "核對官方基本資料；日持股明細與掩護買權等工具分流尚未驗證。",
+      "source_urls": [
+        "https://www.abfunds.com.tw/zh-tw/funds/etf/active/equities/abitl-taiwan-momentum-equity-premium-income-50-active-etf.-.TW00000404A5.html",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00405A",
+      "name": "主動富邦台灣龍耀",
+      "issuer": "富邦投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.fubon.com/asset-management/ph/glory/index.html",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "核對官方產品專頁；日持股下載入口未驗證。",
+      "source_urls": [
+        "https://www.fubon.com/asset-management/ph/glory/index.html",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00406A",
+      "name": "主動中信台灣收益",
+      "issuer": "中國信託投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.ctbcinvestments.com.tw/Product/List?Kind=1&ProductEtfNo=27",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "官方基金總覽含代碼；需以JavaScript或公開下載取得每日持股。",
+      "source_urls": [
+        "https://www.ctbcinvestments.com.tw/Product/List?Kind=1&ProductEtfNo=27",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00407A",
+      "name": "主動凱基台灣",
+      "issuer": "凱基投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.kgifund.com.tw/Fund/Detail?fundID=J024",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "官方產品頁ISIN為TW00000407A8；本次未取得日持股。",
+      "source_urls": [
+        "https://www.kgifund.com.tw/Fund/Detail?fundID=J024",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00408A",
+      "name": "主動第一金優股息",
+      "issuer": "第一金投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.fsitc.com.tw/act/202606_408AETF/article1.html",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "核對官方產品資料；每日持股入口未驗證。",
+      "source_urls": [
+        "https://www.fsitc.com.tw/act/202606_408AETF/article1.html",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00410A",
+      "name": "主動永豐科技趨勢",
+      "issuer": "永豐投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://sitc.sinopac.com/SinopacEtfs/Etfs/SinglePcf/00410A",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "at_least_15_rows_observed",
+      "observed_data_date": "2026-10-22",
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "官方PCF可讀28筆股票代號、股數與NAV權重；頁面上方10/27為PCF日期，實際持股資料日期明列10/22，不能混用。",
+      "source_urls": [
+        "https://sitc.sinopac.com/SinopacEtfs/Etfs/SinglePcf/00410A",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    },
+    {
+      "code": "00409A",
+      "name": "主動復華全球 50",
+      "issuer": "復華投信",
+      "issuer_basis": "官方投信頁／產品文件及競賽名單核對",
+      "official_url": "https://www.fhtrust.com.tw/ETF/etf_detail/ETF26",
+      "url_verification": "observed_primary_source_url",
+      "holdings_status": "official_entry_only",
+      "observed_data_date": null,
+      "date_verified_for_target": false,
+      "target_as_of": "2026-10-22",
+      "local_holdings_snapshot_obtained": false,
+      "usable_for_active_share": false,
+      "access": "公開頁面閱讀；自動下載條款與格式仍須個別核對，未繞過存取限制",
+      "permission_gap": "未使用付費API；FinMind持股需已確認的Sponsor權限，此次未請求",
+      "remaining_gap": "核對官方產品入口；每日跨國持股尚未取得。",
+      "source_urls": [
+        "https://www.fhtrust.com.tw/ETF/etf_detail/ETF26",
+        "https://finmind.github.io/llms-full.txt"
+      ]
+    }
+  ]
+}

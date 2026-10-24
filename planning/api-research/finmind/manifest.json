@@ -1,0 +1,14 @@
+[
+  {
+    "name": "openapi.json",
+    "url": "https://api.finmindtrade.com/openapi.json",
+    "sha256": "80a80baf549c6a3b60f59df757d473a00b64d7d0c977b1e9a8c62aa34550a5bd",
+    "retrieved_date": "2026-10-14"
+  },
+  {
+    "name": "llms-full.txt",
+    "url": "https://finmind.github.io/llms-full.txt",
+    "sha256": "2270ddb7da1a54cad317546ffc893982bd51ab5ddca669ed929025d84691af9e",
+    "retrieved_date": "2026-10-14"
+  }
+]

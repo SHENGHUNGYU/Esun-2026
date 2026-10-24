@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-09",
+  "route": "#data",
+  "catalog_items": 66,
+  "categories": 12,
+  "core_items": 42,
+  "checks": {
+    "json_markdown_site_parity": "passed",
+    "beta_search": "9 results including D31, D32",
+    "combined_core_flows": "1 result D25",
+    "no_results_state": "passed",
+    "reset": "66 items restored",
+    "method_view": "8 sections rendered",
+    "mobile_390x844": "390px document width; method and expanded news detail checked",
+    "console_errors": [],
+    "existing_python_contracts": "5 passed",
+    "existing_reply_contracts": "4 passed"
+  },
+  "scope": "Local preview and content checks; no data adapters or strategy execution implemented."
+}

@@ -1,0 +1,1164 @@
+{
+  "title": "決策資料地圖",
+  "updated": "2026-10-09",
+  "priorities": {
+    "P0": "參賽與可信資料必備",
+    "P1": "兩週策略基線",
+    "P2": "有增量才採用",
+    "P3": "可延後研究"
+  },
+  "categories": [
+    {
+      "id": "rules",
+      "title": "競賽與交易狀態",
+      "question": "能否合法決策、成交與交付？"
+    },
+    {
+      "id": "price",
+      "title": "價量與可交易性",
+      "question": "價格、量能與成交條件是否支持持有？"
+    },
+    {
+      "id": "technical",
+      "title": "技術與市場結構",
+      "question": "趨勢、動能與反轉是否有一致證據？"
+    },
+    {
+      "id": "fundamental",
+      "title": "基本面與估值",
+      "question": "成長是否有品質，價格是否已反映？"
+    },
+    {
+      "id": "flows",
+      "title": "籌碼與持有人",
+      "question": "誰的部位正在改變，是否過度擁擠？"
+    },
+    {
+      "id": "risk",
+      "title": "Beta 與組合風險",
+      "question": "買進後增加多少共同風險？"
+    },
+    {
+      "id": "events",
+      "title": "新聞與公司事件",
+      "question": "什麼新資訊可能改變原本假說？"
+    },
+    {
+      "id": "macro",
+      "title": "總體與跨市場",
+      "question": "外部市場是否改變台股的風險環境？"
+    },
+    {
+      "id": "industry",
+      "title": "產業與預期差",
+      "question": "產業景氣與市場預期是否分歧？"
+    },
+    {
+      "id": "funds",
+      "title": "ETF 與被動資金",
+      "question": "組合是否符合差異化要求，資金如何移動？"
+    },
+    {
+      "id": "research",
+      "title": "標籤與模型證據",
+      "question": "訊號是否能在樣本外帶來增量？"
+    },
+    {
+      "id": "quality",
+      "title": "資料品質與營運",
+      "question": "資料可否重現、準時與安全地使用？"
+    }
+  ],
+  "sources": [
+    {
+      "id": "rules",
+      "title": "競賽規則與原始文件",
+      "url": "#doc=01-rules.md",
+      "note": "本地 docs/ 與 U01 核對；官方歧義仍待答覆。"
+    },
+    {
+      "id": "audit",
+      "title": "U01 資源驗證",
+      "url": "#doc=U01_REPORT.md",
+      "note": "2026-10-08 的連通性盤點，不等於歷史資料與帳號授權驗收。"
+    },
+    {
+      "id": "twse",
+      "title": "TWSE OpenAPI",
+      "url": "https://openapi.twse.com.tw/",
+      "note": "官方行情與公開資料入口；逐表核對欄位、單位及歷史深度。"
+    },
+    {
+      "id": "tpex",
+      "title": "TPEx OpenAPI",
+      "url": "https://www.tpex.org.tw/openapi/",
+      "note": "官方上櫃資料入口；U01 行情端點曾成功，本次瀏覽入口回傳 403。"
+    },
+    {
+      "id": "mops",
+      "title": "公開資訊觀測站",
+      "url": "https://mops.twse.com.tw/mops/",
+      "note": "財報、營收、重大訊息原始公告入口；欄位與自動化存取另驗證。"
+    },
+    {
+      "id": "tej",
+      "title": "TEJ 投資資料與 PIT 說明",
+      "url": "https://www.tejwin.com/news/tej投資用資料庫_量化投資分析應用/",
+      "note": "官方說明涵蓋交易、財報、公司事件與歷史時點；不代表現有 TEJ PRO 帳號已含全部產品。"
+    },
+    {
+      "id": "tquant",
+      "title": "TEJ TQuant 資料集",
+      "url": "https://tquant.tejwin.com/資料集/",
+      "note": "查詢產品與表目錄；API、授權、可回溯版本需依帳號確認。"
+    },
+    {
+      "id": "flows",
+      "title": "TWSE 三大法人日報",
+      "url": "https://wwwc.twse.com.tw/zh/trading/foreign/t86.html",
+      "note": "官方欄位區分外資、投信及自營商自行買賣／避險，單位為股。"
+    },
+    {
+      "id": "tdcc",
+      "title": "TDCC 股權分散表",
+      "url": "https://original-www.tdcc.com.tw/portal/zh/smWeb/qryStock",
+      "note": "以每週最後營業日餘額分級；需保存實際發布時間與取得版本。"
+    },
+    {
+      "id": "taifex",
+      "title": "TAIFEX 法人與衍生品資料",
+      "url": "https://www.taifex.com.tw/cht/3/futContractsDate",
+      "note": "官方提供法人、未平倉、夜盤、Put/Call 等查詢入口；只作股票策略觀測。"
+    },
+    {
+      "id": "alfred",
+      "title": "ALFRED 歷史發布版本",
+      "url": "https://fred.stlouisfed.org/docs/api/fred/alfred.html",
+      "note": "可區別總體數據初次發布與後續修訂。"
+    },
+    {
+      "id": "jev",
+      "title": "AutoTrust JEV-27B 模型卡",
+      "url": "https://huggingface.co/autotrust/JEV-27B",
+      "note": "模型評估入口；模型輸出不是行情資料或已校準股票勝率。"
+    }
+  ],
+  "items": [
+    {
+      "id": "D01",
+      "category": "rules",
+      "priority": "P0",
+      "name": "官方投資宇宙與證券主檔",
+      "fields": "固定 150 檔代碼、上市／上櫃、名稱變更、ISIN、產業、上市日、整張單位、生效版本",
+      "use": "限定可投資集合，跨 TEJ／MCP／新聞做唯一識別",
+      "cadence": "規則變更時；保存每版，不以現今市值重算",
+      "sources": [
+        "rules",
+        "audit"
+      ],
+      "status": "150 檔已核對；主檔映射待建",
+      "caveat": "用固定 2026 名單回測更早年份有選樣偏誤；另做當時可投資集合的穩健性研究。"
+    },
+    {
+      "id": "D02",
+      "category": "rules",
+      "priority": "P0",
+      "name": "競賽限制與日曆",
+      "fields": "持股 20–30 檔、權重上限、現金 0–25%、交易日、08:55 截止、禁放空／槓桿／當沖、規則版本",
+      "use": "將候選配置轉為可提交組合",
+      "cadence": "公告變更、每日開跑前；全競賽期",
+      "sources": [
+        "rules"
+      ],
+      "status": "規則已整理；例外待官方確認",
+      "caveat": "內部風險緩衝不是官方規定；颱風停市、補班與跨夜提交以官方日曆為準。"
+    },
+    {
+      "id": "D03",
+      "category": "rules",
+      "priority": "P0",
+      "name": "真實庫存、現金與 NAV",
+      "fields": "DataPack: team_id,trade_date,as_of_date,generated_at,missing,account.cash,nav_tradable,aum,receivable_cash,holdings_count,holdings[].shares/receivable_shares,prev_day_orders,compliance",
+      "use": "計算買賣差額、防止超賣、確認資格與可用資金",
+      "cadence": "每日對帳；開賽至今完整事件帳本",
+      "sources": [
+        "rules"
+      ],
+      "status": "規格已封存；實際隊伍 DataPack 與 adapter 待驗收",
+      "caveat": "官方資料包為真值；null持股不是空手；應收權益不可交易；violations按天、notices按列，不以全部警告計違規"
+    },
+    {
+      "id": "D04",
+      "category": "rules",
+      "priority": "P0",
+      "name": "官方成交與費稅資料",
+      "fields": "日成交總額／股數均價、收盤價、買賣各 0.1425% 費率、賣出 0.3% 稅、取整口徑",
+      "use": "成交、收盤市值及成本後 NAV 重建",
+      "cadence": "每日收盤後；歷史 3–5 年候選",
+      "sources": [
+        "rules",
+        "twse",
+        "tpex"
+      ],
+      "status": "公式已知；零成交與取整例外待確認",
+      "caveat": "當日完整均價是事後結算／標籤，不能用來做當天晨間選股；不是 OHLC 四價平均。"
+    },
+    {
+      "id": "D05",
+      "category": "rules",
+      "priority": "P0",
+      "name": "公司行動與權益帳",
+      "fields": "除權息、現金／股票股利、分割、減資、增資、換股、停止過戶、基準日、支付日",
+      "use": "修正股數與應收權益，分開計算研究報酬和競賽 NAV",
+      "cadence": "事件驅動＋每日查核；與行情同歷史",
+      "sources": [
+        "mops",
+        "tej",
+        "rules"
+      ],
+      "status": "資料待取得；競賽特殊處理待確認",
+      "caveat": "不能把所有股利當成除息當日現金；還原價不能代替帳本原始價。"
+    },
+    {
+      "id": "D06",
+      "category": "rules",
+      "priority": "P0",
+      "name": "提交回執與 D-Plan 狀態",
+      "fields": "決策 snapshot ID、委託 hash、提交序號、時間、成功／未知／拒收回執、官方庫存、引用 IDs",
+      "use": "冪等提交、查詢未知結果、核對每日完整自主證據鏈",
+      "cadence": "每次提交；全程保留",
+      "sources": [
+        "rules"
+      ],
+      "status": "待官方接口與自動化許可",
+      "caveat": "送出成功不代表官方接受；未知回執先查詢，不能直接重送造成副作用。"
+    },
+    {
+      "id": "D07",
+      "category": "price",
+      "priority": "P0",
+      "name": "原始日價量 OHLCV",
+      "fields": "開高低收、成交股數、成交金額、筆數、漲跌、日期、幣別、來源市場",
+      "use": "委託公式、結算；大多數技術及風險特徵原料",
+      "cadence": "每日；建議 3–5 年，Beta 暖機至少約 252 個有效日",
+      "sources": [
+        "twse",
+        "tpex",
+        "tej",
+        "audit"
+      ],
+      "status": "公開日行情已探測；歷史與單位待驗",
+      "caveat": "股／張、元／千元不能混用；尚未收盤數字不可當成完整日資料。"
+    },
+    {
+      "id": "D08",
+      "category": "price",
+      "priority": "P1",
+      "name": "調整因子與總報酬序列",
+      "fields": "原始價、拆股因子、除權息因子、現金配息、研究用總報酬",
+      "use": "避免除權息假跌幅污染趨勢、Beta 與訓練特徵",
+      "cadence": "每日；與日價量同步歷史",
+      "sources": [
+        "tej",
+        "mops"
+      ],
+      "status": "待授權／欄位驗證",
+      "caveat": "保存因子版本；財務比率與價格水準不能套未來回溯調整而引入洩漏。"
+    },
+    {
+      "id": "D09",
+      "category": "price",
+      "priority": "P1",
+      "name": "流通股數與規模",
+      "fields": "發行股數、流通在外股數、自由流通股、總市值、自由流通市值",
+      "use": "籌碼正規化、規模中性化與成交容量診斷",
+      "cadence": "每日價格×最新已知股數；股數事件更新",
+      "sources": [
+        "tej",
+        "mops"
+      ],
+      "status": "待取得與定義核對",
+      "caveat": "自由流通與發行股數不同；不能用今日股數回填歷史。"
+    },
+    {
+      "id": "D10",
+      "category": "price",
+      "priority": "P1",
+      "name": "流動性與換手",
+      "fields": "20／60 日平均成交額 ADV、成交額中位數、成交股數／流通股數、零成交天數、Amihud 非流動性",
+      "use": "排序同分時偏好穩定流動性；量化部位相對市場容量",
+      "cadence": "每日；至少 120 日",
+      "sources": [
+        "twse",
+        "tpex",
+        "tej"
+      ],
+      "status": "由已驗證價量衍生",
+      "caveat": "競賽均價制不等於真實可成交容量；市場衝擊只列額外壓力測試，不改寫官方記分。"
+    },
+    {
+      "id": "D11",
+      "category": "price",
+      "priority": "P0",
+      "name": "可交易狀態與異常價格",
+      "fields": "停復牌、處置、全額交割、漲跌停價、零量、缺價、除權參考價",
+      "use": "拒絕無法正確估值或推導委託的輸入",
+      "cadence": "事件驅動＋每晨；保留歷史狀態",
+      "sources": [
+        "twse",
+        "tpex",
+        "tej",
+        "rules"
+      ],
+      "status": "待串接；官方例外待答覆",
+      "caveat": "前值填補須標註 stale，不能把停牌當成正常零報酬或可成交。"
+    },
+    {
+      "id": "D12",
+      "category": "price",
+      "priority": "P3",
+      "name": "盤中微結構與委託簿",
+      "fields": "分鐘／tick、買賣價差、深度、委託不平衡、分時量能",
+      "use": "研究波動與可交易性；有增量才加入",
+      "cadence": "盤中；高容量與授權成本",
+      "sources": [
+        "twse",
+        "tpex"
+      ],
+      "status": "未取得；兩週可延後",
+      "caveat": "晨間決策不能讀取同日未來盤中資訊；本賽制不優先做高頻執行模型。"
+    },
+    {
+      "id": "D13",
+      "category": "technical",
+      "priority": "P1",
+      "name": "多尺度動能與相對強弱",
+      "fields": "1／5／20／60／120 日總報酬、20／60 日超越市場／產業報酬、排名",
+      "use": "趨勢輪動、區分市場帶動與個股領先",
+      "cadence": "每日；至少 252 日暖機",
+      "sources": [
+        "twse",
+        "tpex",
+        "tej"
+      ],
+      "status": "研究衍生，待資料驗證",
+      "caveat": "多個週期高度相關；超參數以驗證集選擇，不挑全期最好組合。"
+    },
+    {
+      "id": "D14",
+      "category": "technical",
+      "priority": "P1",
+      "name": "均線、趨勢斜率與突破",
+      "fields": "SMA／EMA 20、60、120，價格距離、均線斜率、20／60／252 日高點距離",
+      "use": "確認趨勢方向與追價程度",
+      "cadence": "每日；252 日暖機",
+      "sources": [
+        "twse",
+        "tpex",
+        "tej"
+      ],
+      "status": "研究衍生",
+      "caveat": "只用已完成交易日；突破訊號須能在下一可成交時點落地。"
+    },
+    {
+      "id": "D15",
+      "category": "technical",
+      "priority": "P2",
+      "name": "震盪與反轉指標",
+      "fields": "RSI 14、MACD 12/26/9、KD 9、CCI、Williams %R、短期反轉",
+      "use": "衡量過熱與反轉候選，作單獨消融對照",
+      "cadence": "每日；約 60–120 日暖機",
+      "sources": [
+        "twse",
+        "tpex",
+        "tej"
+      ],
+      "status": "研究衍生",
+      "caveat": "RSI／KD 並非必然均值回歸；震盪指標高度重複，不能全數當獨立投票。"
+    },
+    {
+      "id": "D16",
+      "category": "technical",
+      "priority": "P1",
+      "name": "量價確認與波動區間",
+      "fields": "相對量 RVOL、ATR 14／價格、布林帶寬、缺口、收盤位置、量價背離",
+      "use": "辨識趨勢品質與過大風險；協助調整權重",
+      "cadence": "每日；至少 60 日",
+      "sources": [
+        "twse",
+        "tpex",
+        "tej"
+      ],
+      "status": "研究衍生",
+      "caveat": "ATR 含價格尺度須正規化；量能異常可能來自換股／大宗交易，需查事件。"
+    },
+    {
+      "id": "D17",
+      "category": "technical",
+      "priority": "P2",
+      "name": "資金流代理指標",
+      "fields": "OBV、MFI、CMF、累積成交量、價格相對日成交均價",
+      "use": "測試交易活躍方向是否補足價格動能",
+      "cadence": "每日；120 日候選",
+      "sources": [
+        "twse",
+        "tpex",
+        "tej"
+      ],
+      "status": "研究衍生",
+      "caveat": "這些是價量代理，不是已識別的真實資金流；不能重複計入法人買賣。"
+    },
+    {
+      "id": "D18",
+      "category": "technical",
+      "priority": "P1",
+      "name": "市場廣度與產業輪動",
+      "fields": "上漲／下跌家數、站上均線比例、新高／新低、產業等權／市值權重報酬、橫斷面離散度",
+      "use": "識別少數權值股帶動或廣泛上漲，選擇風險檔位",
+      "cadence": "每日；至少 252 日",
+      "sources": [
+        "twse",
+        "tpex",
+        "tej"
+      ],
+      "status": "研究衍生",
+      "caveat": "固定 150 檔廣度與全市場廣度分開；歷史產業成分須按時點。"
+    },
+    {
+      "id": "D19",
+      "category": "fundamental",
+      "priority": "P1",
+      "name": "月營收成長與加速度",
+      "fields": "月營收、YoY、MoM、3／12 月累計、3 月對去年同期增幅、成長加速",
+      "use": "品質成長策略的近期營運訊號",
+      "cadence": "每次公告；建議 36–60 個月",
+      "sources": [
+        "mops",
+        "tej"
+      ],
+      "status": "TEJ／官方欄位待取得",
+      "caveat": "月份不是可用日期；春節、低基期與併購需標註，尚未公布不可預填。"
+    },
+    {
+      "id": "D20",
+      "category": "fundamental",
+      "priority": "P1",
+      "name": "獲利能力與成長",
+      "fields": "單季／TTM EPS、營收／營業利益／淨利、毛利率、營業利益率、ROE、ROA、ROIC",
+      "use": "確認成長是否轉化成獲利與資本效率",
+      "cadence": "財報公告；至少 12–20 季",
+      "sources": [
+        "mops",
+        "tej"
+      ],
+      "status": "待財報版本與科目映射",
+      "caveat": "合併／個別、累計／單季須分清；ROIC 的稅與投入資本定義固定。"
+    },
+    {
+      "id": "D21",
+      "category": "fundamental",
+      "priority": "P1",
+      "name": "現金流與盈餘品質",
+      "fields": "CFO、資本支出、FCF、CFO／淨利、應計項目／資產、一次性損益",
+      "use": "排除帳面高成長但現金品質差的候選",
+      "cadence": "財報公告；至少 12 季",
+      "sources": [
+        "mops",
+        "tej"
+      ],
+      "status": "待取得",
+      "caveat": "FCF 定義固定；負淨利不能直接計比率排序，累計現金流先轉單季。"
+    },
+    {
+      "id": "D22",
+      "category": "fundamental",
+      "priority": "P1",
+      "name": "資產負債與營運資金",
+      "fields": "負債比、淨負債、利息保障、現金、短債、流動比、存貨／應收週轉、現金循環天數",
+      "use": "識別景氣反轉時的財務脆弱性",
+      "cadence": "財報公告；至少 12 季",
+      "sources": [
+        "mops",
+        "tej"
+      ],
+      "status": "待取得",
+      "caveat": "金融業與一般製造業需分組；質押與或有負債另納入事件檢查。"
+    },
+    {
+      "id": "D23",
+      "category": "fundamental",
+      "priority": "P1",
+      "name": "估值與股東回報",
+      "fields": "PE、PB、EV/EBITDA、盈餘／FCF 殖利率、股息率、歷史分位、同業折溢價",
+      "use": "避免用過高價格買入成長；同產業比較",
+      "cadence": "日價＋當時已知財報；3–5 年歷史",
+      "sources": [
+        "mops",
+        "tej",
+        "twse",
+        "tpex"
+      ],
+      "status": "研究衍生與供應商值交叉檢查",
+      "caveat": "負 EPS／EBITDA 不視為便宜；預估 PE 需當時預測版本，股息率不等於競賽現金收益。"
+    },
+    {
+      "id": "D24",
+      "category": "fundamental",
+      "priority": "P2",
+      "name": "治理、稀釋與特殊產業指標",
+      "fields": "董監持股／質押、關係人交易、查核意見、可轉債、增資稀釋；銀行 NIM／逾放、保險資本、REIT 指標",
+      "use": "識別一般財務因子忽略的治理與行業風險",
+      "cadence": "公告／季／年；3–5 年",
+      "sources": [
+        "mops",
+        "tej"
+      ],
+      "status": "待授權與科目確認",
+      "caveat": "治理評分發布日晚於評分年度；不同產業指標不可直接混排。"
+    },
+    {
+      "id": "D25",
+      "category": "flows",
+      "priority": "P1",
+      "name": "三大法人交易",
+      "fields": "外資、投信、自營商自行買賣／避險各自買入、賣出、淨額；1／5／20 日累計與連續性",
+      "use": "檢驗中短期資金需求；作動能的補充證據",
+      "cadence": "每日盤後；至少 2–3 年",
+      "sources": [
+        "flows",
+        "tpex",
+        "tej"
+      ],
+      "status": "官方欄位已核對；管線未接",
+      "caveat": "避險部位不等於方向看多；股數淨買／成交股數及流通股正規化，勿混金額。"
+    },
+    {
+      "id": "D26",
+      "category": "flows",
+      "priority": "P2",
+      "name": "法人持股水位與變化",
+      "fields": "外資持有股數／比例、投信持股、持有人集中、法人持股相對自身歷史分位",
+      "use": "評估擁擠程度與買盤延續空間",
+      "cadence": "依表日／週／月；2–3 年",
+      "sources": [
+        "tej",
+        "twse",
+        "tpex"
+      ],
+      "status": "表別、頻率及授權待確認",
+      "caveat": "交易淨額不一定等於庫存變化；借貸、公司行動與統計範圍可能影響。"
+    },
+    {
+      "id": "D27",
+      "category": "flows",
+      "priority": "P2",
+      "name": "集保級距與股權集中",
+      "fields": "各持股級距人數、股數、比例；大額／小額級距變化、集中度",
+      "use": "觀察持有人結構的慢變化",
+      "cadence": "週；至少 1–3 年，超過公開保留範圍需另取歷史",
+      "sources": [
+        "tdcc",
+        "tej"
+      ],
+      "status": "公開週資料可查；歷史待確認",
+      "caveat": "依每週餘額編製，不是每日交易；大戶級距不等於最終受益人或必然主力。"
+    },
+    {
+      "id": "D28",
+      "category": "flows",
+      "priority": "P2",
+      "name": "融資融券與借貸",
+      "fields": "融資／融券餘額、使用率、增減、券資比、借券賣出、借券餘額、還券與費率（若授權）",
+      "use": "槓桿擁擠、追繳與軋空風險診斷",
+      "cadence": "每日；2–3 年",
+      "sources": [
+        "twse",
+        "tpex",
+        "tej"
+      ],
+      "status": "待取得與口徑核對",
+      "caveat": "融券、借券與借券賣出不能混為一談；觀察不等於允許策略放空。"
+    },
+    {
+      "id": "D29",
+      "category": "flows",
+      "priority": "P2",
+      "name": "內部人與大股東行動",
+      "fields": "董監／經理人申報轉讓、實際轉讓、質押變更、庫藏股宣布與執行",
+      "use": "辨識供給增加、信心訊號或治理風險",
+      "cadence": "事件／月；3–5 年",
+      "sources": [
+        "mops",
+        "tej"
+      ],
+      "status": "待取得",
+      "caveat": "申報不等於成交；公告原因與實際執行分開記錄。"
+    },
+    {
+      "id": "D30",
+      "category": "flows",
+      "priority": "P3",
+      "name": "券商分點與主力代理",
+      "fields": "分點買賣、集中度、周轉、可能隔日沖特徵；逐欄保留來源方法",
+      "use": "僅作可驗證的增量研究",
+      "cadence": "日；授權與歷史成本高",
+      "sources": [
+        "tej"
+      ],
+      "status": "現有權限未知；可延後",
+      "caveat": "分點不等於同一投資人；禁止把無定義的主力評分當真實身分證據。"
+    },
+    {
+      "id": "D31",
+      "category": "risk",
+      "priority": "P1",
+      "name": "市場 Beta 與解釋力",
+      "fields": "60／120／252 日 Beta、樣本數、標準誤、R²、截距；同頻市場總報酬",
+      "use": "衡量市場曝險，區分動能與大盤上漲效應",
+      "cadence": "每日滾動；至少 252 日暖機",
+      "sources": [
+        "twse",
+        "tpex",
+        "tej"
+      ],
+      "status": "研究衍生",
+      "caveat": "Beta 是敏感度而非預期報酬；基準、回溯窗口與估計誤差須一起輸出。"
+    },
+    {
+      "id": "D32",
+      "category": "risk",
+      "priority": "P2",
+      "name": "下行、產業與動態 Beta",
+      "fields": "市場下跌樣本 Beta、產業殘差 Beta、EWMA／收縮 Beta、匯率與利率敏感度",
+      "use": "辨識壓力情境下會一起下跌的部位",
+      "cadence": "日／週更新；至少 1–3 年",
+      "sources": [
+        "twse",
+        "tpex",
+        "tej",
+        "alfred"
+      ],
+      "status": "研究衍生",
+      "caveat": "條件樣本少易不穩定；不能用單一短窗精準預言尾部損失。"
+    },
+    {
+      "id": "D33",
+      "category": "risk",
+      "priority": "P1",
+      "name": "波動、回撤與下行風險",
+      "fields": "20／60 日年化波動、下行波動、歷史最大回撤、偏態、尾部損失、殘差波動",
+      "use": "控制單股風險與組合風險檔位",
+      "cadence": "每日；至少 1–3 年",
+      "sources": [
+        "twse",
+        "tpex",
+        "tej"
+      ],
+      "status": "研究衍生",
+      "caveat": "年化日數固定；尾部樣本不足須報不確定性，不能把歷史 MDD 當未來上限。"
+    },
+    {
+      "id": "D34",
+      "category": "risk",
+      "priority": "P1",
+      "name": "相關性與協方差",
+      "fields": "滾動相關、收縮協方差、產業／風格群集、PCA、組合波動 sqrt(w'Σw)",
+      "use": "避免 25 檔股票其實押同一因子，協助配置",
+      "cadence": "每日；至少 252 日",
+      "sources": [
+        "twse",
+        "tpex",
+        "tej"
+      ],
+      "status": "研究衍生",
+      "caveat": "150 檔配短窗估計易奇異；缺值與非同步交易需一致處理，先用收縮／因子模型。"
+    },
+    {
+      "id": "D35",
+      "category": "risk",
+      "priority": "P1",
+      "name": "部位、因子與換手曝險",
+      "fields": "權重、現金、產業／供應鏈集中、加權 Beta、風險貢獻、規模／價值／動能曝險、預計費稅",
+      "use": "將選股轉為成本與限制下的配置",
+      "cadence": "每次候選生成＋每日收盤後",
+      "sources": [
+        "rules",
+        "tej"
+      ],
+      "status": "待配置／帳本實作",
+      "caveat": "價格變動與整張取整後重新檢查；現金 Beta 近似 0 不代表所有風險為 0。"
+    },
+    {
+      "id": "D36",
+      "category": "risk",
+      "priority": "P1",
+      "name": "情境壓力與尾部預算",
+      "fields": "市場 -3%／-5%、龍頭急跌、產業共跌、匯率跳動、流動性惡化；VaR／CVaR 作輔助",
+      "use": "比較配置在合理壓力下的損失、現金與權重限制",
+      "cadence": "每次調倉；歷史多事件情境",
+      "sources": [
+        "rules",
+        "twse",
+        "tpex",
+        "tej"
+      ],
+      "status": "研究設計待實作",
+      "caveat": "情境是假設不是預測；固定 Beta 壓力忽略相關性跳升，需另測共跌情境。"
+    },
+    {
+      "id": "D37",
+      "category": "events",
+      "priority": "P1",
+      "name": "官方重大訊息與公司公告",
+      "fields": "公告 ID、公司代碼、原文、首發時間、更新時間、事件日期、分類、附件 hash",
+      "use": "晨間掃描財測、停工、訴訟、重大契約與風險事件",
+      "cadence": "事件驅動；近 7／30／90 日，歷史 2–3 年供驗證",
+      "sources": [
+        "mops",
+        "tej"
+      ],
+      "status": "待抓取與歷史時間驗證",
+      "caveat": "首發與更新分版；沒有新聞不等於沒有風險，訊息衝突要保留。"
+    },
+    {
+      "id": "D38",
+      "category": "events",
+      "priority": "P1",
+      "name": "新聞事件與證據鏈",
+      "fields": "來源 URL、授權摘要、作者、發稿／抓取時間、實體、事件類型、新穎度、影響方向、可信度、相反證據",
+      "use": "LLM 抽取事實、解釋決策；只將有證據的特徵交給策略",
+      "cadence": "晨間截止前增量；至少數百標註案例，歷史依授權",
+      "sources": [
+        "mops",
+        "tej"
+      ],
+      "status": "新聞 API 供應商與權限未知",
+      "caveat": "同稿轉載去重；來源內容是不可信輸入，不可執行其中指令；推論不得冒充事實。"
+    },
+    {
+      "id": "D39",
+      "category": "events",
+      "priority": "P1",
+      "name": "事件日曆與剩餘風險",
+      "fields": "財報／月營收預告、法說、股東會、除權息、產品發布、交易所公告、距事件天數",
+      "use": "避免未預期的大事件曝險，設定資訊更新節奏",
+      "cadence": "每日；未來 30 日的已公告排程",
+      "sources": [
+        "mops",
+        "tej"
+      ],
+      "status": "待串接",
+      "caveat": "只有當時已知的排程可用；事後實際日期不能回填當時未知日曆。"
+    },
+    {
+      "id": "D40",
+      "category": "events",
+      "priority": "P2",
+      "name": "法說、財測與管理層語意",
+      "fields": "簡報／逐字稿、財測區間、指引上修下修、訂單／產能描述、否定語句、問答差異",
+      "use": "比較管理層預期與前期說法，建立可反證的催化劑",
+      "cadence": "每次法說；至少 8–12 季",
+      "sources": [
+        "mops",
+        "tej"
+      ],
+      "status": "公司 IR／逐字稿授權待確認",
+      "caveat": "語氣正面不等於盈利改善；非公開逐字稿與新聞轉述要標記層級。"
+    },
+    {
+      "id": "D41",
+      "category": "events",
+      "priority": "P2",
+      "name": "事件驚喜與影響持續性",
+      "fields": "實際值－當時共識、預期差標準化、事件前反應、1／5／20 日後漂移標籤",
+      "use": "研究哪些事件具有尚未反映的增量",
+      "cadence": "事件；2–5 年樣本",
+      "sources": [
+        "tej",
+        "mops"
+      ],
+      "status": "需 PIT 共識與標籤管線",
+      "caveat": "事後報酬只作訓練標籤；財報超預期不是必然上漲，注意發布時市場已反映。"
+    },
+    {
+      "id": "D42",
+      "category": "events",
+      "priority": "P2",
+      "name": "政策、地緣與營運衝擊",
+      "fields": "關稅／出口管制、補助、監管、制裁、災害、停電、資安、召回、勞資事件",
+      "use": "依公司營收地區／供應鏈映射影響，調整風險",
+      "cadence": "事件；近況＋歷史案例",
+      "sources": [
+        "mops",
+        "tej"
+      ],
+      "status": "官方部會／新聞來源待確認",
+      "caveat": "新聞熱度不等於個股影響；傳聞與已生效政策分開，不以情緒分數直接下單。"
+    },
+    {
+      "id": "D43",
+      "category": "macro",
+      "priority": "P1",
+      "name": "台灣市場與產業基準",
+      "fields": "加權／櫃買指數、總報酬指數、產業指數、成交值、基準版本",
+      "use": "Beta、超額報酬、風格與市場狀態對照",
+      "cadence": "日；3–5 年",
+      "sources": [
+        "twse",
+        "tpex",
+        "tej"
+      ],
+      "status": "來源待選定及歷史對齊",
+      "caveat": "上市／上櫃結構不同；總報酬／價格指數不可混算，績效基準不等於競賽排名公式。"
+    },
+    {
+      "id": "D44",
+      "category": "macro",
+      "priority": "P1",
+      "name": "美股與隔夜相關市場",
+      "fields": "S&P 500、Nasdaq、費半 SOX、台積電 ADR、主要客戶／同業報酬、ADR 換算溢價",
+      "use": "觀察台股開盤前已發生的外部衝擊",
+      "cadence": "每晨；至少 2–3 年",
+      "sources": [
+        "tej"
+      ],
+      "status": "台美股 MCP 尚未驗證；授權供應商待定",
+      "caveat": "處理美國夏令時間、假日與財報盤後時點；ADR 比率與匯率一致，不能視為無風險套利。"
+    },
+    {
+      "id": "D45",
+      "category": "macro",
+      "priority": "P1",
+      "name": "匯率與利率",
+      "fields": "USD/TWD、美元指數、台美政策利率、2／10 年美債殖利率、曲線斜率",
+      "use": "出口商獲利敏感度、外資風險與估值環境",
+      "cadence": "日／事件；3–5 年",
+      "sources": [
+        "alfred",
+        "tej"
+      ],
+      "status": "需央行／授權市場資料核對",
+      "caveat": "匯率方向先固定報價法；匯率與股價相關會變動，不直接解讀因果。"
+    },
+    {
+      "id": "D46",
+      "category": "macro",
+      "priority": "P2",
+      "name": "期貨、選擇權與情緒",
+      "fields": "台指夜盤報酬／基差、未平倉 OI、法人淨部位、Put/Call、台指波動率、美股 VIX",
+      "use": "市場擁擠與尾部風險的額外觀測",
+      "cadence": "夜盤／日；2–3 年",
+      "sources": [
+        "taifex",
+        "tej"
+      ],
+      "status": "官方入口已核對；歷史待接",
+      "caveat": "夜盤交易日與曆日不同；轉倉／到期會扭曲變化，期權僅作資料不作可交易標的。"
+    },
+    {
+      "id": "D47",
+      "category": "macro",
+      "priority": "P2",
+      "name": "總體發布與預期差",
+      "fields": "CPI、就業、PMI、GDP、出口／外銷訂單、央行會議、當時共識、發布版本",
+      "use": "定義風險事件與宏觀狀態，測試策略狀態切換",
+      "cadence": "月／季／事件；5–10 年候選",
+      "sources": [
+        "alfred",
+        "tej"
+      ],
+      "status": "公開版本資料可研究；共識多需授權",
+      "caveat": "使用首次發布或當時已知 vintage；實際值的月份不是市場可用日期。"
+    },
+    {
+      "id": "D48",
+      "category": "macro",
+      "priority": "P2",
+      "name": "原物料與運輸成本",
+      "fields": "原油、銅、金、天然氣、運價、原料成本與相關產業暴露",
+      "use": "解釋原料／航運／製造產業的成本與需求",
+      "cadence": "日／週；3–5 年",
+      "sources": [
+        "tej"
+      ],
+      "status": "各序列來源與授權待選",
+      "caveat": "期貨連續合約有轉倉處理；全球指標只應作用於有經濟關聯的公司。"
+    },
+    {
+      "id": "D49",
+      "category": "industry",
+      "priority": "P1",
+      "name": "產業與供應鏈映射",
+      "fields": "產業分類、產品營收比、客戶／供應商、地區曝險、AI／半導體等主題證據",
+      "use": "主題一致性、新聞傳導、避免表面分散但共同曝險",
+      "cadence": "公告／季／年；保存生效版本",
+      "sources": [
+        "mops",
+        "tej"
+      ],
+      "status": "主題定義與映射待建立",
+      "caveat": "不能用最新熱門標籤回填歷史；供應鏈關係需要原始證據與有效日期。"
+    },
+    {
+      "id": "D50",
+      "category": "industry",
+      "priority": "P2",
+      "name": "產業景氣與量價",
+      "fields": "產能利用率、出貨、訂單／庫存、DRAM／NAND 價格、設備支出、終端銷售、出口細項",
+      "use": "檢驗營收成長能否持續，建立產業特定訊號",
+      "cadence": "週／月／季；3–5 年",
+      "sources": [
+        "tej",
+        "mops"
+      ],
+      "status": "公司 IR／產業資料多需個別授權",
+      "caveat": "各產業頻率與定義不同；調查樣本／估計值不可與實際出貨混淆。"
+    },
+    {
+      "id": "D51",
+      "category": "industry",
+      "priority": "P2",
+      "name": "分析師預測與修正",
+      "fields": "EPS／營收共識、預測家數、分歧、上修下修幅度、預測期限、發布版本",
+      "use": "測試預期修正與盈利驚喜",
+      "cadence": "日／事件；至少 2–3 年 PIT 歷史",
+      "sources": [
+        "tej"
+      ],
+      "status": "產品是否包含未知；不可假定 TEJ PRO 全有",
+      "caveat": "今天看到的歷史預估可能已回修；分析師目標價不是可直接交易的公平價。"
+    },
+    {
+      "id": "D52",
+      "category": "industry",
+      "priority": "P3",
+      "name": "社群、搜尋與注意力",
+      "fields": "公開討論量、搜尋趨勢、情緒分歧、新聞密度、來源集中與機器人疑慮",
+      "use": "僅測增量注意力或擁擠訊號",
+      "cadence": "日；平台授權及可重現歷史",
+      "sources": [
+        "tej"
+      ],
+      "status": "需另選合法供應商；可延後",
+      "caveat": "抽樣／刪文／平台演算法會改變；匿名傳言不當事實，無增量即淘汰。"
+    },
+    {
+      "id": "D53",
+      "category": "funds",
+      "priority": "P0",
+      "name": "指定 30 ETF 的前 15 大持股",
+      "fields": "ETF 代碼、持股代碼、權重／股數、持股基準日、公告日、現金、幣別、前 15 名排序",
+      "use": "每日 Active Share 合規診斷與差異化設計",
+      "cadence": "依官方要求每日檢查；保存每日版本",
+      "sources": [
+        "rules",
+        "tej"
+      ],
+      "status": "30 檔已核對；每日持股與官方計法未取得",
+      "caveat": "前 15 大聯集、重正規化、現金及國外成分股口徑待官方確認；不可用錯日期假裝合規。"
+    },
+    {
+      "id": "D54",
+      "category": "funds",
+      "priority": "P2",
+      "name": "ETF 資金流與市場壓力",
+      "fields": "AUM、流通單位、申贖、折溢價、持股變更、持股占個股流通量",
+      "use": "觀察被動買賣需求與擁擠程度",
+      "cadence": "日／公告；1–3 年",
+      "sources": [
+        "tej",
+        "twse",
+        "tpex"
+      ],
+      "status": "基金公司與供應商欄位待驗",
+      "caveat": "AUM 上升可能只是價格上漲；淨申購與次級市場成交量不同。"
+    },
+    {
+      "id": "D55",
+      "category": "funds",
+      "priority": "P2",
+      "name": "指數換股與基金事件",
+      "fields": "納入／刪除、權重變更、公告日、生效日、基金成立／清算、可能換手規模",
+      "use": "事件風險與資金需求對照",
+      "cadence": "事件；3–5 年",
+      "sources": [
+        "twse",
+        "tpex",
+        "tej"
+      ],
+      "status": "指數商／基金公司公告待整理",
+      "caveat": "不能用生效後名單倒推公告前訊號；預估流量須標示假設。"
+    },
+    {
+      "id": "D56",
+      "category": "funds",
+      "priority": "P2",
+      "name": "績效基準與歸因",
+      "fields": "加權指數、150 檔等權、簡單因子組合、現金基線、各產業貢獻、官方公布 NAV",
+      "use": "檢驗策略是否只複製大盤；回顧偏差與風險來源",
+      "cadence": "每日／每次驗證；同一測試期間",
+      "sources": [
+        "rules",
+        "twse",
+        "tpex",
+        "tej"
+      ],
+      "status": "研究基準待建立；官方資料依公開時點",
+      "caveat": "競賽目標是期末 NAV；不要看到短期排行榜就追逐他人持倉或反覆調參。"
+    },
+    {
+      "id": "D57",
+      "category": "research",
+      "priority": "P1",
+      "name": "可成交報酬標籤與成本",
+      "fields": "決策截止、次可成交日均價、未來 1／5／10／20 日估值／成交價、費稅、超額報酬",
+      "use": "讓 ML 預測與官方交易機制一致",
+      "cadence": "離線訓練；3–5 年候選，另測滾動 24 日競賽窗",
+      "sources": [
+        "rules",
+        "twse",
+        "tpex",
+        "tej"
+      ],
+      "status": "待資料與回測引擎",
+      "caveat": "標籤結束前不能用該樣本訓練；close-to-close 不能替代官方均價成交績效。"
+    },
+    {
+      "id": "D58",
+      "category": "research",
+      "priority": "P1",
+      "name": "特徵與切分版本",
+      "fields": "原料快照、計算窗口、缺值遮罩、winsorize／標準化參數、產業中性化、訓練／驗證／封存期間",
+      "use": "多因子與 LightGBM 公平比較，避免洩漏",
+      "cadence": "每次訓練；所有實驗保存",
+      "sources": [
+        "tej",
+        "rules"
+      ],
+      "status": "待管線建立",
+      "caveat": "跨期統計只 fit 訓練集；重疊報酬標籤以 purging／embargo 隔離，不能隨機拆列。"
+    },
+    {
+      "id": "D59",
+      "category": "research",
+      "priority": "P1",
+      "name": "樣本外結果與消融",
+      "fields": "成本後 NAV、MDD、換手、IC／Rank IC、各折增量、尾部失敗、資格違規、資料覆蓋",
+      "use": "決定哪些數據與模型真正保留",
+      "cadence": "每個候選版本；凍結 holdout",
+      "sources": [
+        "rules"
+      ],
+      "status": "尚無實測績效",
+      "caveat": "多重試驗容易挑到幸運策略；未改善已驗證基線就淘汰，不以訓練成績採用。"
+    },
+    {
+      "id": "D60",
+      "category": "research",
+      "priority": "P1",
+      "name": "LLM／JEV 判斷評測集",
+      "fields": "中文事件、標準答案、來源片段、否定／矛盾／缺證據案例、數字正確率、引用正確率、拒答與校準",
+      "use": "驗證事件抽取與有限選項判斷，不讓模型憑空報行情",
+      "cadence": "U08 離線樣本；保留獨立測試集",
+      "sources": [
+        "jev",
+        "rules"
+      ],
+      "status": "待標註；JEV 適配最多一工作日",
+      "caveat": "JEV／LLM 是資料處理工具；輸出機率未經金融校準不能當股票上漲機率。"
+    },
+    {
+      "id": "D61",
+      "category": "research",
+      "priority": "P3",
+      "name": "RL 與時序模型狀態",
+      "fields": "已驗證因子、風險狀態、策略權重動作、含成本獎勵、歷史轉移、波動／量能序列",
+      "use": "只研究策略混合與預測增量；以固定基線對照",
+      "cadence": "離線；需多市場狀態歷史",
+      "sources": [
+        "rules",
+        "tej"
+      ],
+      "status": "可裁切支線",
+      "caveat": "150 檔的短期競賽不足以自行建立可靠 RL 學習；模擬器錯誤會被策略利用。"
+    },
+    {
+      "id": "D62",
+      "category": "quality",
+      "priority": "P0",
+      "name": "時點、來源與版本契約",
+      "fields": "security_id、event／effective_at、published_at、first_seen_at、fetched_at、available_at、來源 URL、hash、revision、unit、currency",
+      "use": "確保每條決策只使用截止前可得資料，能回到原始證據",
+      "cadence": "每筆資料；永久保留決策所需版本",
+      "sources": [
+        "audit",
+        "rules",
+        "tej",
+        "alfred"
+      ],
+      "status": "契約已提案；管線待實作",
+      "caveat": "歷史回補的 fetched_at 是今天，不能假裝當時實際抓到；區分可得性重建與實際運行證據。"
+    },
+    {
+      "id": "D63",
+      "category": "quality",
+      "priority": "P0",
+      "name": "品質、缺值與新鮮度",
+      "fields": "欄位完整率、150 檔覆蓋、重複／缺日、OHLC 合理性、單位、來源差異、延遲、TTL、時區",
+      "use": "阻擋污染資料；可明確 abstain／停止候選或使用驗證過備援",
+      "cadence": "每次抓取與決策前",
+      "sources": [
+        "audit",
+        "twse",
+        "tpex"
+      ],
+      "status": "待自動檢查",
+      "caveat": "0、未公布、不適用、來源故障四種缺值不同；禁止靜默以前值代替最新數據。"
+    },
+    {
+      "id": "D64",
+      "category": "quality",
+      "priority": "P0",
+      "name": "授權、存取與來源能力",
+      "fields": "供應商、API／匯出／MCP 方式、表與欄位、歷史深度、配額、延遲、保存／衍生／模型使用／展示權",
+      "use": "確認真正拿得到及可用範圍；決定備援",
+      "cadence": "U01 確認、授權變更時",
+      "sources": [
+        "audit",
+        "tej",
+        "tquant"
+      ],
+      "status": "TEJ／新聞／台美股 MCP 權限未驗收",
+      "caveat": "MCP 是傳輸接口不是可信度保證；網站只放目錄與方法，不發布付費原始全文或密鑰。"
+    },
+    {
+      "id": "D65",
+      "category": "quality",
+      "priority": "P0",
+      "name": "Agent 執行與恢復遙測",
+      "fields": "工具成功率、逾時、模型／prompt 版本、延遲、資源用量、checkpoint、資料快照、錯誤與恢復紀錄",
+      "use": "晨間能準時生成、提交與復原；驗證自主性",
+      "cadence": "每次執行；72 小時 soak＋歷史重播",
+      "sources": [
+        "rules",
+        "audit"
+      ],
+      "status": "待 Agent 開發",
+      "caveat": "可追溯日誌不等於已自主通過；人工修改個股／權重不可偽裝 Agent 決策。"
+    },
+    {
+      "id": "D66",
+      "category": "quality",
+      "priority": "P3",
+      "name": "高成本替代數據",
+      "fields": "衛星、網站流量、招聘、供應鏈交易、消費追蹤、ESG 文本與地理曝險",
+      "use": "僅在明確假說、合法授權及樣本外增量下研究",
+      "cadence": "依供應商；歷史與版本須可重現",
+      "sources": [
+        "tej"
+      ],
+      "status": "未取得；兩週延後",
+      "caveat": "資料覆蓋、選樣、隱私與發布延遲容易造成假訊號；不能為了用滿算力而蒐集。"
+    }
+  ]
+}

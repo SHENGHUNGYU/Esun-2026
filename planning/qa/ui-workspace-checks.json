@@ -1,0 +1,25 @@
+{
+  "checked_on": "2026-10-09",
+  "routes": {
+    "original_plan": "#roadmap",
+    "daily": "#daily",
+    "unit_tab": "#daily/U01/evidence"
+  },
+  "checks": {
+    "all_14_units_render": true,
+    "status_filter_empty_and_reset": true,
+    "dependency_link": true,
+    "keyboard_tabs": true,
+    "report_return_link": true,
+    "plan_has_3_phases_without_progress_or_daily_tabs": true,
+    "documents_grouped": true,
+    "mobile_unit_picker_U14": true,
+    "390px_daily_and_plan_no_horizontal_overflow": true,
+    "contract_tests_passed": 4,
+    "js_syntax_passed": true
+  },
+  "unchanged_statuses": {
+    "U01": "待驗收",
+    "U02–U14": "待開始"
+  }
+}

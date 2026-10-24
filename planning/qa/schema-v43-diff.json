@@ -1,0 +1,37 @@
+{
+  "description_fields_excluded": true,
+  "changes": [
+    {
+      "path": "/$defs/decision/properties/inference_refs/maxItems",
+      "old": 5,
+      "new": 8
+    },
+    {
+      "path": "/$defs/observation/properties/source_ref/maxItems",
+      "old": 5,
+      "new": 10
+    },
+    {
+      "path": "/properties/decisions/maxItems",
+      "old": 30,
+      "new": 60
+    },
+    {
+      "path": "/properties/orders/maxItems",
+      "old": 30,
+      "new": 60
+    },
+    {
+      "path": "/properties/schema_version/const",
+      "old": "4.2"
+    },
+    {
+      "path": "/properties/schema_version/pattern",
+      "new": "^4\\.\\d+$"
+    },
+    {
+      "path": "/properties/schema_version/type",
+      "new": "string"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "營收成長與估值分散基線",
+  "version": "revenue-value-v1",
+  "holdings": 25,
+  "cash_target": "0.15",
+  "cash_band": ["0.10", "0.22"],
+  "single_cap": "0.08",
+  "tsmc_cap": "0.20",
+  "industry_cap": "0.25",
+  "minimum_daily_amount": "20000000",
+  "maximum_revenue_age_days": 100,
+  "growth_score_weight": "0.60",
+  "value_score_weight": "0.20",
+  "liquidity_score_weight": "0.20",
+  "buy_fee": "0.001425",
+  "sell_fee_tax": "0.004425",
+  "price_stress_fraction": "0.05",
+  "active_share_buffer": "0.20"
+}

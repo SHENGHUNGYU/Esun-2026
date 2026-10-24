@@ -1,0 +1,34 @@
+{
+  "checked_at": "2026-10-09T14:42:47.200884+08:00",
+  "swagger_operations": {
+    "TWSE": 143,
+    "TPEx": 225,
+    "total": 368
+  },
+  "schema_checks": {
+    "method_path_sets_exact_match": true,
+    "all_field_names_types_descriptions_match": true,
+    "unique_urls": 368,
+    "declared_query_parameters": 0
+  },
+  "representative_http_probes": 9,
+  "ui_checks": {
+    "search_and_expanded_fields": true,
+    "exchange_filter": true,
+    "core_filter_count": 66,
+    "pagination_last_page_count": 8,
+    "empty_results": true,
+    "guide_tables_render": true,
+    "mobile_viewport_width": 390,
+    "mobile_document_width": 390,
+    "field_table_scroll_container": true
+  },
+  "automated_tests": {
+    "python_passed": 5,
+    "node_passed": 4
+  },
+  "limitations": [
+    "Only 9 endpoints probed; other operations are specification verified.",
+    "No undocumented date parameters assumed."
+  ]
+}

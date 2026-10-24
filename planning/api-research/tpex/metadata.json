@@ -1,0 +1,60 @@
+{
+  "exchange": "TPEx",
+  "retrieved_date": "2026-10-09",
+  "entry_url": "https://www.tpex.org.tw/openapi/",
+  "spec_url": "https://www.tpex.org.tw/openapi/swagger.json",
+  "api_base_url": "https://www.tpex.org.tw/openapi/v1",
+  "openapi_version": "3.0.0",
+  "api_info_version": "1.0.0",
+  "operation_count": 225,
+  "path_count": 225,
+  "schema_count": 225,
+  "spec_sha256": "05af7755d0d528626c104f7a8ccd7b00c6a0cf228d30bcb4669020e514eb0c7e",
+  "tag_counts": {
+    "上櫃": 63,
+    "指數系列": 20,
+    "公司治理": 52,
+    "債券": 20,
+    "興櫃": 5,
+    "權證": 19,
+    "開放式基金": 3,
+    "黃金現貨": 3,
+    "創櫃": 5,
+    "券商資料": 2,
+    "財務報表": 33
+  },
+  "priority_counts": {
+    "P1": 14,
+    "P3": 84,
+    "P0": 9,
+    "P2": 86,
+    "非本賽主線": 32
+  },
+  "parameters_operation_count": 0,
+  "pagination": "未宣告",
+  "security": "規格未宣告 security 或 securitySchemes；四個代表端點未帶 key 回傳 HTTP 200。",
+  "rate_limit": "規格未提供；不宣稱無限制。",
+  "updated_at": "規格未逐表提供排程；HTTP Last-Modified 是檔案版本資訊，不能當公司公告時點。",
+  "sources": [
+    {
+      "url": "https://data.gov.tw/dataset/11371",
+      "role": "上櫃股票收盤行情：每 1 日更新、免費、政府開放授權；不可推論每張表同頻率。"
+    },
+    {
+      "url": "https://data.gov.tw/dataset/11370",
+      "role": "上櫃股票行情：含均價、次日參考價，股票／ETF／ETN；與收盤行情含權證之範圍不同。"
+    },
+    {
+      "url": "https://data.gov.tw/dataset/11387",
+      "role": "融資融券餘額：每日、政府開放授權。"
+    },
+    {
+      "url": "https://data.gov.tw/dataset/11369",
+      "role": "市場現況：官方資料集標示不定期更新，勿全表假設每日。"
+    },
+    {
+      "url": "https://eshop.tpex.org.tw/en/product/list/31",
+      "role": "另有盤後訂閱產品 API 文件，與本 OpenAPI 不同。"
+    }
+  ]
+}

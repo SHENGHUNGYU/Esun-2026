@@ -1,0 +1,31 @@
+{
+  "created_on": "2026-10-24",
+  "generator": "pandas 2.3.3",
+  "rows": 561,
+  "columns": 36,
+  "record_types": {
+    "交易所API端點": 368,
+    "FinMind資料集": 73,
+    "原始資料需求": 41,
+    "逐檔持股取得任務": 30,
+    "衍生或內部需求": 25,
+    "資料源取得任務": 21,
+    "FinMind支援端點": 3
+  },
+  "phase1_exchange_candidates": 57,
+  "requirements": 66,
+  "etfs": 30,
+  "sha256": "5cdaef3ebda2dd2435d0aeaf8c8209bbc49b95404982feb7dd4974d998c3661d",
+  "checks": [
+    "unique IDs",
+    "368 exact exchange operation IDs",
+    "all 57 first-phase candidates",
+    "all 66 requirements",
+    "all 30 ETF codes preserved",
+    "FinMind dataset IDs in current official enum",
+    "all upstream IDs resolve",
+    "UTF-8 BOM pandas roundtrip exact",
+    "formula-prefix scan"
+  ],
+  "scope_limit": "Catalog completeness is against the agreed requirements; entitlement, data quality, PIT and exact ETF coverage remain unverified."
+}

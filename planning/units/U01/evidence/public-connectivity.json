@@ -1,0 +1,94 @@
+[
+  {
+    "name": "twse",
+    "url": "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
+    "checked_at": "2026-10-08T15:37:59.067738+08:00",
+    "authenticated": false,
+    "status": 200,
+    "bytes": 319262,
+    "sha256": "2271989da2b9eba6a5e0072e9d0928b2c8a0dc6da37d58d265f1858ce22b29bb",
+    "content_type": "application/json",
+    "records": 1380,
+    "fields": [
+      "Date",
+      "Code",
+      "Name",
+      "TradeVolume",
+      "TradeValue",
+      "OpeningPrice",
+      "HighestPrice",
+      "LowestPrice",
+      "ClosingPrice",
+      "Change",
+      "Transaction"
+    ],
+    "note": "保留首次成功量測；第二次量測另列逾時，不以成功覆蓋失敗。"
+  },
+  {
+    "name": "organizer",
+    "url": "https://esun-ai-challenge.tw/",
+    "checked_at": "2026-10-08T15:38:37.097693+08:00",
+    "authenticated": false,
+    "status": 200,
+    "bytes": 828,
+    "sha256": "fa3d92a38c25b2c471254a998b3680ed9d2586a53e5bd4654290a5d4556befdd",
+    "content_type": "text/html",
+    "html_title": [
+      "玉山 AI 競技場"
+    ]
+  },
+  {
+    "name": "twse",
+    "url": "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",
+    "checked_at": "2026-10-08T15:38:37.097693+08:00",
+    "authenticated": false,
+    "error_type": "TimeoutError",
+    "status": null
+  },
+  {
+    "name": "tpex",
+    "url": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes",
+    "checked_at": "2026-10-08T15:38:37.097693+08:00",
+    "authenticated": false,
+    "status": 200,
+    "bytes": 357080,
+    "sha256": "0a17e866eead705692d210593813672e94dcb3dc9a96ba9aa5388d43bc039b78",
+    "content_type": "application/json",
+    "records": 1011,
+    "fields": [
+      "Date",
+      "SecuritiesCompanyCode",
+      "CompanyName",
+      "Close",
+      "Change",
+      "Open",
+      "High",
+      "Low",
+      "TradingShares",
+      "TransactionAmount",
+      "TransactionNumber",
+      "LatestBidPrice",
+      "LatesAskPrice",
+      "Capitals",
+      "NextLimitUp",
+      "NextLimitDown"
+    ],
+    "dates": [
+      "1151007"
+    ],
+    "missing_whitelist_codes": []
+  },
+  {
+    "name": "tej_docs",
+    "url": "https://api.tej.com.tw/",
+    "checked_at": "2026-10-08T15:38:37.097693+08:00",
+    "authenticated": false,
+    "status": 200,
+    "bytes": 9219,
+    "sha256": "a1c7362831f34938aaa8d1ea3cbd9a6c8fa2c5c01e51c5cbf7c34a90bffc330b",
+    "content_type": "text/html",
+    "html_title": [
+      "TEJ API"
+    ]
+  }
+]

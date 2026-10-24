@@ -1,0 +1,21 @@
+{
+  "checked_at": "2026-10-08",
+  "unit_count": 14,
+  "completed": 0,
+  "contract_tests": 4,
+  "js_syntax": "passed",
+  "browser_checks": [
+    "U01 待驗收呈現",
+    "U02 單元切換",
+    "U02 前置依賴返回 U01",
+    "U01 報告閱讀",
+    "390px 路線圖及文件無頁面水平溢出"
+  ],
+  "mobile": {
+    "viewport_width": 390,
+    "document_scroll_width": 390
+  },
+  "limitations": [
+    "Agent 未實作，未做競賽交易驗證"
+  ]
+}

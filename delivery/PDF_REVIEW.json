@@ -1,0 +1,19 @@
+{
+  "content_review_scope": "Character constraints checked; the strategy narrative must be compared with actual implemented policy.",
+  "etf_name_characters": 10,
+  "name_prefix_valid": true,
+  "philosophy_characters": 222,
+  "theme_characters": 35,
+  "visual_review_required": false,
+  "visual_reviewed": true,
+  "reviewed_pages": {
+    "ETF_strategy.pdf": 1,
+    "Operator_guide.pdf": 2
+  },
+  "pdf_hashes": {
+    "ETF_strategy.pdf": "010ef54e0b3ea9b822aa9646e1a0bc614c7727851a8bd45a84ce39ab92f71b19",
+    "Operator_guide.pdf": "72a37b2b8f920989cc031279d75c1566d4bbc41018a31eabc5ee22437fe9384c"
+  },
+  "review_note": "Latest page PNGs inspected for Chinese glyphs, clipping and page breaks.",
+  "strategy_config_sha256": "66337798430763f7c98ce993b7fab5130b8f0a5e3ade3f19d322f72444c9ed04"
+}

@@ -1,0 +1,10 @@
+{
+  "backend": "ollama",
+  "base_url": "http://127.0.0.1:11435",
+  "model": "orcarouter/Qwen3.8-27B-Uncensored:latest",
+  "digest": "6fac2f98fdf716f292de04c8554681b1e1f3a0d71445e374afebb3433911f705",
+  "provider": "other",
+  "timeout_seconds": 180,
+  "context_tokens": 8192,
+  "output_tokens": 1800
+}

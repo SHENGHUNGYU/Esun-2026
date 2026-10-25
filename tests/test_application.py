@@ -1,0 +1,61 @@
+import copy
+import json
+from pathlib import Path
+import pytest
+from fastapi.testclient import TestClient
+from esun_research.application import create_app
+from esun_research.operations import ReceiptEvent,record_receipt,receipts,reconcile
+from esun_research.candidate import generate_candidate
+from esun_research.datapack import DataPack
+from test_candidate import environment
+
+
+def test_loopback_application_imports_only_valid_pack_and_blocks_cross_origin(environment):
+    store,sources,universe,pack,policy,schema,req=environment
+    app=create_app(store.root,model_config=None);client=TestClient(app)
+    page=client.get('/');assert page.status_code==200 and '本機' in page.text
+    assert 'frame-ancestors' in page.headers['content-security-policy']
+    body={'file':('account.json',pack.model_dump_json(),'application/json')}
+    assert client.post('/api/datapack',files=body).status_code==403
+    auth={'x-esun-token':app.state.csrf_token}
+    response=client.post('/api/datapack',files=body,headers=auth);assert response.status_code==200
+    assert response.json()['gate']=='INITIAL_CASH_ACCOUNT'
+    assert client.post('/api/datapack',files=body,headers={**auth,'origin':'https://evil.test'}).status_code==403
+    assert client.get('/',headers={'host':'evil.test'}).status_code==400
+    assert client.get('/api/candidates/unknown').status_code==404
+    assert client.get('/api/status').json()['model_configured'] is False
+    assert client.post('/api/candidates',json={'datapack_id':'../../secrets'},headers=auth).status_code==400
+
+
+def test_receipt_states_do_not_send_or_claim_orders_confirmation(environment):
+    store,sources,universe,pack,policy,schema,req=environment
+    result=generate_candidate(store,req,sources,universe);plan=store.json(result['plan'])['plan']
+    confirmed=ReceiptEvent(stage='orders_confirmed',official_reference='r1',statement='已逐筆核對官方當日委託股數與方向。',orders=plan['orders'])
+    with pytest.raises(ValueError):record_receipt(store,req.run_id,confirmed)
+    checked=ReceiptEvent(stage='upload_checked',validation='warned',official_reference='check',statement='已完成官方上傳檢核，尚未按下送出。')
+    event=record_receipt(store,req.run_id,checked,b'official receipt screenshot')
+    assert event['proof_ref'] and event['event']['stage']=='upload_checked'
+    assert len(receipts(store,req.run_id))==1
+    with pytest.raises(ValueError):record_receipt(store,req.run_id,confirmed)
+    record_receipt(store,req.run_id,ReceiptEvent(stage='submitted',official_reference='submission1',statement='已在歷史紀錄確認本版正式繳交。'))
+    record_receipt(store,req.run_id,confirmed)
+    assert len(receipts(store,req.run_id))==3
+    bad=confirmed.model_copy(update={'orders':plan['orders'][:-1]})
+    with pytest.raises(ValueError):record_receipt(store,req.run_id,bad)
+
+
+def test_partial_execution_reconciles_official_shares_and_distinguishes_notices(environment):
+    store,sources,universe,pack,policy,schema,req=environment
+    result=generate_candidate(store,req,sources,universe);plan=store.json(result['plan'])['plan'];projection=store.json(result['plan'])['projected']
+    data=pack.model_dump(mode='json');excluded=plan['orders'][0]['ticker'];positions={c:int(n) for c,n in projection['positions'].items() if c!=excluded}
+    prices=store.json(result['snapshot'])['prices'];nav=1000000000;value=sum(float(prices[c])*n for c,n in positions.items());cash=nav-value
+    data.update(trade_date='2026-10-28',as_of_date='2026-10-27',holdings=[{'code':c,'shares':n,'receivable_shares':0,'close_price':prices[c]} for c,n in positions.items()])
+    data['account'].update(cash=cash,nav_tradable=nav,aum=nav,cash_ratio_tradable=cash/nav,holdings_count=len(positions))
+    data['prev_day_orders'].update(outcome='executed',excluded_codes=[excluded])
+    data['compliance'].update(notices=2,violations=0)
+    next_pack=DataPack.model_validate(data);report=reconcile(pack,plan,next_pack)
+    assert report['status']=='RECONCILED_SHARES' and report['official_violations']==0 and report['official_notices']==2
+    data['holdings'][0]['shares']-=1000;data['account']['cash']+=float(prices[data['holdings'][0]['code']])*1000
+    assert reconcile(pack,plan,DataPack.model_validate(data))['status']=='REQUIRES_REVIEW'
+    pending=next_pack.model_copy(update={'missing':['prev_settlement'],'as_of_date':None,'account':None,'holdings':None})
+    assert reconcile(pack,plan,pending)['status']=='WAIT_OFFICIAL_INPUT'

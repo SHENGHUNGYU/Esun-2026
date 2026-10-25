@@ -31,3 +31,7 @@
 ## 2026-10-24 交易風險關卡增補
 
 決策profile由7增為18來源，11個官方事件來源均已完整下載。停復牌配對、處置期間、注意資訊、變更交易及除權息基準已接入自主候選與委託二次檢查；39項程式測試通過。最新實際候選在 artifacts/live-20261024/candidates/trading-risk-candidate-r2/，25檔／25筆、本地檢查通過，仍為 CANDIDATE_BLOCKED_EXTERNAL_CHECKS。沒有將歷史復牌誤當持續停牌，注意資訊預設只註記。完整停止買賣／終止上市、公司行動及收件窗重抓仍待驗收。ETF官方來源逐檔盤點30筆，可計算封存快照仍0／30。詳見 planning/19-trading-risk-gate.md；試繳、PDF、上傳與正式送出均未完成。
+
+## 2026-10-26 本機應用與真實模型
+
+新增application、llm、benchmarks、operations、deliverables模組及本機四頁工作台。從UI匯入實際DataPack並啟動模型，run-9f542cf73e734c8a完成25檔／25筆候選、9次有證據的模型呼叫（含修正）、13檔有效ETF比較，程式hash與當前版本一致。恢復不重跑模型，ZIP下載逐檔驗證hash。57項測試通過；ETF策略PDF1頁與操作手冊2頁已逐頁檢閱。使用者已確認試繳成功；尚未獨立讀取回執，也未完成本版正式收件或策略PDF官方繳交。全30檔Active Share、完整交易狀態／公司行動、PIT歷史驗證、正式結算與長時間穩定性仍待完成，詳見delivery/READINESS.md。

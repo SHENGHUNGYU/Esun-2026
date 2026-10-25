@@ -103,7 +103,35 @@ class Store:
                 if c.get('ref'):
                     self.read(c['ref'])
             return saved
-        saved = {'request':body,'captures':{s.id:self.select(s.id,request.cutoff_at) for s in sources}}
+        saved = {'request':body,'captures':{s.id:(self.select_reference(s,request.cutoff_at,str(request.as_of)) if namespace=='candidates' else self.select(s.id,request.cutoff_at)) for s in sources}}
         immutable(manifest, encoded(saved))
         return saved
+
+    def select_reference(self,source,cutoff_at,reference_date):
+        """An explicitly required historical reference is not latest market data.
+
+        A failed or malformed latest capture still blocks. Only a successful,
+        well-dated snapshot for another day permits selecting a proven archive.
+        """
+        latest=self.select(source.id,cutoff_at)
+        if source.kind not in {'quotes','valuation'} or latest['status']!='ok':return latest
+        from .normalize import day
+        def dates(ref):
+            try:
+                rows=self.json(ref)
+                if not isinstance(rows,list) or not rows:return set()
+                return {day(r['Date']) for r in rows}
+            except (ValueError,KeyError,TypeError):return set()
+        current=dates(latest['ref'])
+        if len(current)!=1 or reference_date in current:return latest
+        with self.connect() as db:
+            db.row_factory=sqlite3.Row
+            rows=db.execute("SELECT * FROM captures WHERE source_id=? AND epoch<=? AND status='ok' ORDER BY epoch DESC,id DESC",(source.id,instant(cutoff_at).timestamp())).fetchall()
+            for row in rows:
+                if dates(row['ref'])=={reference_date}:
+                    result=dict(row)
+                    first=db.execute('SELECT fetched_at FROM captures WHERE source_id=? AND ref=? ORDER BY epoch,id LIMIT 1',(source.id,row['ref'])).fetchone()
+                    result.update(first_seen_at=first[0],selection_basis='official_reference_date_archive')
+                    return result
+        return latest
 

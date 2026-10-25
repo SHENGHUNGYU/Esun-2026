@@ -30,6 +30,9 @@ class DecisionRequest(RunRequest):
     session_ref: str
     datapack_seen_at: str
     risk_policy_ref: str | None = None
+    llm_ref: str | None = None
+    benchmark_universe_ref: str | None = None
+    benchmark_refs: list[str] = []
 
 class State(TypedDict,total=False):
     snapshot: str
@@ -37,6 +40,8 @@ class State(TypedDict,total=False):
     allocation: str
     plan: str
     validation: str
+    llm_review: str
+    active_share: str
     errors: list[str]
     status: str
     report: str
@@ -207,7 +212,7 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models):
           'counter_evidence':'缺少完整歷史、隔夜市場與風險事件驗證；市場可能在參考收盤後出現跳空或相關性改變。'},
         'inferences':inferences,'decisions':decisions,'no_trade_decisions':unchanged,'orders':orders,
         'agent_metadata':{'model_provider':'other','model_version':policy.version+'-deterministic-no-llm',
-            'run_started_at':now(),'run_completed_at':now(),'code_version':'sha256:'+digest(encoded({k:request.get(k) for k in ['code_hash','policy_ref','schema_ref','session_ref','universe_hash','registry_hash','risk_policy_ref']}))[:48]}}
+            'run_started_at':now(),'run_completed_at':now(),'code_version':'sha256:'+digest(encoded({k:request.get(k) for k in ['code_hash','policy_ref','schema_ref','session_ref','universe_hash','registry_hash','risk_policy_ref','llm_ref','benchmark_universe_ref','benchmark_refs']}))[:48]}}
     # Funding is a numerical declaration. Only add it when omitting all sells
     # genuinely pushes cash below the declared lower bound.
     buys=[d['decision_id'] for d in decisions if d['action'] in {'BUY','ADD'}]
@@ -218,7 +223,7 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models):
             inferences[int(d['inference_refs'][0][1:])-1]['logic']+=' 不執行調度賣出會低於現金區間下限；讓位順序依同一完整候選及分散規則決定。'
     return plan,lineage,projected
 
-def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpointer,interrupt_before=None):
+def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpointer,interrupt_before=None,model=None):
     req=request.model_dump(mode='json');folder=store.root/'candidates'/request.run_id
     def prepare_node(state):
         snapshot=prepare(store,sources,universe,frozen,pack,policy)
@@ -248,6 +253,9 @@ def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpoin
         expected_ranked=store.json(state['features'])
         for row in expected_ranked:row['score']=decimal(row['score'])
         expected_plan,_,_=compile_document(snap,expected_ranked,store.json(state['allocation']),pack,policy,req,sources)
+        if req.get('llm_ref'):
+            from .llm import apply_review
+            expected_plan=apply_review(expected_plan,store.json(state['llm_review']))
         errors=validate_plan(plan,schema,pack,snap['prices'],universe,req['cutoff_at'],policy,expected_plan['observations'],expected_plan['sources'])
         if snap.get('trading_risk'):errors+=order_errors(snap['trading_risk'],plan['orders'])
         for section in ['inferences','decisions','no_trade_decisions','orders','market_view']:
@@ -263,9 +271,15 @@ def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpoin
                 failures=breaches(result,policy,industries if all(c in industries for c in result['positions']) else None)
                 scenarios.append({'execution_factor':str(execution),'close_factor':str(close),'errors':failures,'cash_ratio':str(result['cash_ratio'])})
         if any(s['errors'] for s in scenarios):errors.append('price_stress_failed')
-        blockers=['active_share_30_etfs_not_verified','official_upload_and_submission_not_verified','fee_rounding_not_verified','strategy_pdf_not_submitted','no_out_of_sample_performance_validation']
+        blockers=['official_upload_and_submission_not_verified','fee_rounding_not_verified','strategy_pdf_not_submitted','no_out_of_sample_performance_validation']
+        from .benchmarks import evaluate
+        expected=store.json(req['benchmark_universe_ref']) if req.get('benchmark_universe_ref') else []
+        active=evaluate(store,req.get('benchmark_refs',[]),projected['weights'],expected,req['as_of'],req['cutoff_at'],policy.active_share_buffer)
+        if not expected:active['release_blockers'].append('active_share_30_etfs_not_verified')
+        blockers+=active['release_blockers']
         blockers+=(snap['trading_risk']['release_blockers'] if snap.get('trading_risk') else ['trading_status_and_corporate_actions_not_verified'])
         if req['mode']=='fixture':blockers.append('fixture_input_not_for_submission')
+        if not req.get('llm_ref'):blockers.append('llm_not_enabled')
         if not any(r['kind']=='market_index' and r['date']==req['as_of'] for r in snap['records']):blockers.append('market_background_pool_proxy_only')
         partial=[]
         for order in plan['orders']:
@@ -274,7 +288,22 @@ def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpoin
         verdict={'schema_and_semantics_pass':not errors,'errors':sorted(set(errors)),
             'release_blockers':blockers,'official_server_validation':False,'submission_allowed':False,'scenarios':scenarios,'single_exclusion_scenarios':partial,
             'partial_execution_note':'Actual execution and excluded_codes must be reconciled from the next official DataPack; full fills are not guaranteed.'}
-        return {'validation':store.put_json(verdict),'errors':verdict['errors']}
+        return {'validation':store.put_json(verdict),'errors':verdict['errors'],'active_share':store.put_json(active)}
+    def llm_node(state):
+        if not req.get('llm_ref'):return {}
+        from .llm import ModelConfig, OllamaModel, review_document, apply_review
+        config=ModelConfig.model_validate(store.json(req['llm_ref']))
+        bundle=store.json(state['plan'])
+        try:
+            cached=folder/'llm-review.json'
+            if cached.exists():review=json.loads(cached.read_bytes())
+            else:
+                review=review_document(store,folder,bundle['plan'],config,model or OllamaModel(config))
+                immutable(cached,encoded(review))
+            if review['config']!=config.model_dump():raise ValueError('review_model_config_mismatch')
+            bundle['plan']=apply_review(bundle['plan'],review)
+            return {'plan':store.put_json(bundle),'llm_review':store.put_json(review)}
+        except ValueError as e:return {'errors':[str(e)]}
     def publish_node(state):
         errors=state.get('errors',[])
         verdict=store.json(state['validation']) if state.get('validation') else {'errors':errors,'schema_and_semantics_pass':False}
@@ -287,6 +316,10 @@ def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpoin
         if state.get('features'):outputs['ranking.json']=store.read(state['features'])
         if state.get('allocation'):outputs['targets.json']=store.read(state['allocation'])
         outputs['policy.json']=store.read(req['policy_ref'])
+        if state.get('llm_review'):
+            review=store.json(state['llm_review']);outputs['llm-review.json']=encoded(review)
+            outputs['llm-call-evidence.json']=encoded([store.json(ref) for ref in review['call_refs']])
+        if state.get('active_share'):outputs['active-share.json']=store.read(state['active_share'])
         if state.get('plan'):
             bundle=store.json(state['plan'])
             if 'plan' in bundle:
@@ -294,8 +327,8 @@ def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpoin
                 outputs[name]=encoded(bundle['plan']);outputs['lineage.json']=encoded(bundle['lineage']);outputs['projected-account.json']=encoded(bundle['projected'])
         lines=['# 自主決策與 D-Plan 本地驗收','',f'狀態：{status}',f'輸入類型：{req["mode"]}；行情基準：{req["as_of"]}；截止：{req["cutoff_at"]}',
             '',f'資料品質：{sum(x["valid"] for x in store.json(state["snapshot"])["coverage"])}/{len(universe)}檔有效行情。',
-            '此候選尚有外部驗收阻礙，未上傳、未試繳、未正式送出。策略為營收成長／估值／流動性規則基線，尚無績效優勢證據。',
-            '市場判斷引用實際可用的官方指數與固定股票池廣度，兩者分開標記；沒有呼叫任何LLM。','', '## 本地錯誤']
+            '此版本候選尚有外部驗收阻礙，未由本程式上傳或送出；其他版本的試繳狀態另記。策略為營收成長／估值／流動性規則基線，尚無績效優勢證據。',
+            '市場判斷引用實際可用的官方指數與固定股票池廣度，兩者分開標記。'+('本地LLM已完成逐項研究推論與反證，股數／權重／硬限制由確定性程式驗證。' if state.get('llm_review') else '本次沒有通過LLM研究驗證。'),'', '## 本地錯誤']
         lines += ['- '+e for e in errors] or ['- 無本地阻擋錯誤。']
         if risk:
             lines+=['','## 交易事件風險關卡','',f'來源{len(risk["feeds"])}項；禁止新買{sum(not s["buy_allowed"] for s in risk["securities"].values())}檔；需先處理才能賣出{sum(not s["sell_allowed"] for s in risk["securities"].values())}檔。',
@@ -317,16 +350,17 @@ def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpoin
         immutable(folder/'manifest.json',encoded({'request':req,'status':status,'artifacts':{n:digest(b) for n,b in outputs.items()}}))
         return {'status':status,'report':str(folder/'report.md')}
     graph=StateGraph(State)
-    for name,fn in [('prepare',prepare_node),('rank',ranking_node),('allocate',allocate_node),('compile',compile_node),('validate',validate_node),('publish',publish_node)]:graph.add_node(name,fn)
+    for name,fn in [('prepare',prepare_node),('rank',ranking_node),('allocate',allocate_node),('compile',compile_node),('llm_review',llm_node),('validate',validate_node),('publish',publish_node)]:graph.add_node(name,fn)
     graph.add_edge(START,'prepare')
     graph.add_conditional_edges('prepare',lambda s:'publish' if s['errors'] else 'rank')
     graph.add_edge('rank','allocate')
     graph.add_conditional_edges('allocate',lambda s:'publish' if s['errors'] else 'compile')
-    graph.add_conditional_edges('compile',lambda s:'publish' if s['errors'] else 'validate')
+    graph.add_conditional_edges('compile',lambda s:'publish' if s['errors'] else 'llm_review')
+    graph.add_conditional_edges('llm_review',lambda s:'publish' if s['errors'] else 'validate')
     graph.add_edge('validate','publish');graph.add_edge('publish',END)
     return graph.compile(checkpointer=checkpointer,interrupt_before=interrupt_before)
 
-def generate_candidate(store,request,sources,universe,interrupt_before=None):
+def generate_candidate(store,request,sources,universe,interrupt_before=None,model=None):
     if digest(encoded(universe))!=request.universe_hash or digest(encoded([s.model_dump() for s in sources]))!=request.registry_hash:
         raise ValueError('Universe or source registry hash mismatch')
     pack=load_datapack(store.read(request.datapack_ref),request.team_id,request.trade_date)
@@ -334,7 +368,7 @@ def generate_candidate(store,request,sources,universe,interrupt_before=None):
     frozen=store.freeze(request,sources,namespace='candidates')
     folder=store.root/'candidates'/request.run_id
     with sqlite3.connect(store.root/'candidate-checkpoints.sqlite',check_same_thread=False) as conn:
-        graph=graph_for(store,request,sources,universe,frozen,pack,policy,schema,SqliteSaver(conn),interrupt_before)
+        graph=graph_for(store,request,sources,universe,frozen,pack,policy,schema,SqliteSaver(conn),interrupt_before,model)
         config={'configurable':{'thread_id':request.run_id},'recursion_limit':20}
         previous=graph.get_state(config)
         if previous.values and not previous.next:

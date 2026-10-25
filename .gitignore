@@ -17,4 +17,6 @@ id_ed25519
 /planning/rounds/*PRIVATE*
 /graphify-out/
 /planning/site-build*.tar.gz
+/output/
+/tmp/
 

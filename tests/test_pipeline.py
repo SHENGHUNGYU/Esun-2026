@@ -103,3 +103,15 @@ def test_remote_download_restricts_hosts_and_private_credentials():
     assert gateway.get(private)[1]=='remote_private_provider_or_params_not_supported'
     injected=SOURCE.model_copy(update={'url':'https://openapi.twse.com.tw/v1/test?token=secret'})
     assert gateway.get(injected)[1]=='url_not_allowed'
+
+def test_explicit_reference_archive_never_masks_newest_failure(tmp_path):
+    from esun_research.store import Store,encoded
+    from esun_research.contracts import Source
+    store=Store(tmp_path);source=Source(id='quote',provider='TWSE',branch='market',kind='quotes',url='https://openapi.twse.com.tw/test')
+    a=store.capture(source.id,encoded([{'Date':'1151022'}]),fetched_at='2026-10-24T08:00:00+08:00')
+    store.capture(source.id,encoded([{'Date':'1151026'}]),fetched_at='2026-10-26T08:00:00+08:00')
+    selected=store.select_reference(source,'2026-10-26T09:00:00+08:00','2026-10-22')
+    assert selected['ref']==a['ref'] and selected['selection_basis']=='official_reference_date_archive'
+    assert selected['fetched_at']=='2026-10-24T08:00:00+08:00'
+    store.capture(source.id,None,'http_503',fetched_at='2026-10-26T08:30:00+08:00')
+    assert store.select_reference(source,'2026-10-26T09:00:00+08:00','2026-10-22')['status']=='error'

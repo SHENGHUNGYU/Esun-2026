@@ -8,6 +8,8 @@ from esun_research.store import Store, encoded, digest
 from esun_research.risk import FEEDS, RiskPolicy, assess, order_errors
 from esun_research.candidate import generate_candidate
 from test_candidate import environment
+from test_exchange_events import report_fixture
+from esun_research.event_transport import REPORTS
 
 ROOT=Path(__file__).resolve().parents[1]
 TIME='2026-10-24T08:00:00+08:00'
@@ -18,7 +20,8 @@ def setup_risk(tmp_path, payloads=None, cutoff=TIME, trade='2026-10-27'):
         provider='TWSE' if sid.startswith('TWSE') else 'TPEx'
         source=Source(id=sid,provider=provider,kind='raw',branch='events',url='https://openapi.twse.com.tw/test')
         sources.append(source)
-        store.capture(sid,encoded((payloads or {}).get(sid,[])),fetched_at=TIME)
+        default=report_fixture(sid,empty=True) if sid in REPORTS else []
+        store.capture(sid,encoded((payloads or {}).get(sid,default)),fetched_at=TIME)
         captures[sid]=store.select(sid,cutoff)
     universe={'2330':{'market':'TWSE'},'3491':{'market':'TPEX'}}
     frozen={'request':{'cutoff_at':cutoff,'trade_date':trade,'as_of':'2026-10-22'},'captures':captures}
@@ -75,9 +78,9 @@ def test_staleness_future_publication_and_fresh_window(tmp_path):
     env=setup_risk(tmp_path,{'TWSE-116':[{'Code':'2330','Date':'1151025'}]})
     assert not assess(*env)['securities']['2330']['buy_allowed']
     env=setup_risk(tmp_path,cutoff='2026-10-26T20:00:00+08:00')
-    assert len(assess(*env)['errors'])==11
+    assert len(assess(*env)['errors'])==18
     for sid in FEEDS:
-        env[0].capture(sid,encoded([]),fetched_at='2026-10-26T19:31:00+08:00')
+        env[0].capture(sid,encoded(report_fixture(sid,empty=True) if sid in REPORTS else []),fetched_at='2026-10-26T19:31:00+08:00')
         env[2]['captures'][sid]=env[0].select(sid,'2026-10-26T20:00:00+08:00')
     assert 'risk_snapshot_needs_trade_window_refresh' not in assess(*env)['release_blockers']
     assert 'corporate_action_scope_incomplete' in assess(*env)['release_blockers']
@@ -87,7 +90,7 @@ def with_risk(env,affected):
     for sid in FEEDS:
         provider='TWSE' if sid.startswith('TWSE') else 'TPEx'
         sources.append(Source(id=sid,provider=provider,kind='raw',branch='events',url='https://openapi.twse.com.tw/test'))
-        rows=([{'Code':affected,'TradingHaltDate':'1151027','TradingHaltTime':'080000','TradingResumptionDate':'','TradingResumptionTime':''}] if sid=='TWSE-063' else [])
+        rows=([{'Code':affected,'TradingHaltDate':'1151027','TradingHaltTime':'080000','TradingResumptionDate':'','TradingResumptionTime':''}] if sid=='TWSE-063' else report_fixture(sid,empty=True) if sid in REPORTS else [])
         store.capture(sid,encoded(rows),fetched_at=TIME)
     risk=RiskPolicy.model_validate_json((ROOT/'config/trading-risk-policy.json').read_bytes())
     req=req.model_copy(update={'risk_policy_ref':store.put_json(risk.model_dump()),'registry_hash':digest(encoded([s.model_dump() for s in sources]))})
@@ -100,7 +103,9 @@ def test_candidate_excludes_before_ranking_and_retains_evidence(environment):
     plan=store.json(result['plan'])['plan']
     assert all(o['ticker']!='1099' for o in plan['orders'])
     assert store.json(result['validation'])['schema_and_semantics_pass']
-    assert len(plan['sources'])==17
+    assert len(plan['sources'])==24
+    assert all(len(o['source_ref'])<=10 for o in plan['observations'])
+    assert all(any(plan['observations'][int(ref[1:])-1]['topic']=='trading_risk_snapshot' for ref in i['premise_refs']) for i in plan['inferences'])
     assert (store.root/'candidates'/req.run_id/'trading-risk.json').exists()
     # Risk policy participates in the immutable release fingerprint.
     changed=RiskPolicy.model_validate_json((ROOT/'config/trading-risk-policy.json').read_bytes()).model_copy(update={'attention_blocks_buys':True})
@@ -131,5 +136,28 @@ def test_future_halt_disposition_and_unknown_daily_summary(tmp_path):
 def test_cli_decision_profile_has_all_risk_feeds():
     from esun_research.cli import candidate_sources,settings
     decision=candidate_sources();research,_=settings()
-    assert len(decision)==18 and set(FEEDS)<={s.id for s in decision}
+    assert len(decision)==25 and set(FEEDS)<={s.id for s in decision}
     assert len(research)==15
+
+
+def test_real_web_action_blocks_rebased_reference_and_preserves_row_evidence(tmp_path):
+    store,sources,frozen,universe,policy=setup_risk(tmp_path,{'TPEx-WEB-REDUCTION':report_fixture('TPEx-WEB-REDUCTION')})
+    universe['8047']={'market':'TPEX'}
+    result=assess(store,sources,frozen,universe,policy)
+    state=result['securities']['8047']
+    assert not state['buy_allowed'] and not state['sell_allowed'] and not result['errors']
+    action=next(f for f in state['flags'] if f['kind']=='reduction')
+    assert action['resume']=='2026-10-27' and action['new_shares_per_old_share']=='0.83071872'
+    assert action['cash_payment_date'] is None and action['page']==0 and action['page_row']==2
+    assert store.read(action['raw_ref'])
+
+
+def test_model_review_covers_new_risk_observations_without_changing_orders(environment):
+    from test_llm import enable,EvidenceModel
+    store,sources,universe,req,config=enable(with_risk(environment,'1099'))
+    result=generate_candidate(store,req,sources,universe,model=EvidenceModel())
+    assert result['status']=='CANDIDATE_BLOCKED_EXTERNAL_CHECKS'
+    plan=store.json(result['plan'])['plan'];review=store.json(result['llm_review'])
+    assert all(len(o['source_ref'])<=10 for o in plan['observations'])
+    expected={i['inf_id']:set(i['premise_refs']) for i in plan['inferences']}
+    assert all(set(e['observation_ids'])==expected[e['inference_id']] for e in review['explanations'])

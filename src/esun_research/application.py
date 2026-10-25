@@ -113,7 +113,7 @@ def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',
                 'valuation_date':value['valuation_date'] if value else None,'equity_count':len(value['holdings']) if value else None,
                 'auto_supported':any(code in group for group in SUPPORTED.values())})
         session=json.loads((PROJECT/'config/competition-session.json').read_bytes())
-        return {'at':now(),'sources':sources,'etf_imported':sum(b['status']=='ok' for b in benchmarks),'etf_expected':30,'benchmarks':benchmarks,
+        return {'at':now(),'sources':sources,'source_expected':len(sources),'etf_imported':sum(b['status']=='ok' for b in benchmarks),'etf_expected':30,'benchmarks':benchmarks,
             'first_reference_date':session['first_reference_date'],
             'runs':runs,'jobs':jobs.list(),'receipts':receipts(store),'model_configured':bool(model_config and model_config.exists()),
             'notice':'本機資料與操作紀錄；正式上傳及送出由官方後台完成。'}

@@ -22,6 +22,10 @@ class Gateway:
         self.client.close()
 
     def get(self, source: Source, params=None):
+        from .event_transport import REPORTS
+        if source.id in REPORTS:
+            from .exchange_events import download
+            return download(source)
         parsed = urlparse(source.url)
         if parsed.scheme!='https' or parsed.hostname not in HOSTS or parsed.query or parsed.username:
             return None, 'url_not_allowed'
@@ -75,6 +79,10 @@ class RemoteGateway:
         pass
 
     def get(self,source,params=None):
+        from .event_transport import REPORTS
+        if source.id in REPORTS:
+            from .exchange_events import download
+            return download(source,self.host)
         parsed=urlparse(source.url)
         if source.provider=='FinMind' or params:return None,'remote_private_provider_or_params_not_supported'
         if parsed.scheme!='https' or parsed.hostname not in HOSTS or parsed.query or parsed.username:

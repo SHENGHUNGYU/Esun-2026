@@ -1806,5 +1806,68 @@
     "kind": "rss",
     "enabled": true,
     "fields": []
+  },
+  {
+    "id": "TWSE-WEB-STOP",
+    "url": "https://www.twse.com.tw/rwd/zh/violation/stop",
+    "provider": "TWSE",
+    "branch": "events",
+    "kind": "trading_risk",
+    "enabled": false,
+    "fields": []
+  },
+  {
+    "id": "TWSE-WEB-DELIST",
+    "url": "https://www.twse.com.tw/rwd/zh/company/suspendListing",
+    "provider": "TWSE",
+    "branch": "events",
+    "kind": "trading_risk",
+    "enabled": false,
+    "fields": []
+  },
+  {
+    "id": "TWSE-WEB-REDUCTION",
+    "url": "https://www.twse.com.tw/rwd/zh/reducation/TWTAVU",
+    "provider": "TWSE",
+    "branch": "events",
+    "kind": "trading_risk",
+    "enabled": false,
+    "fields": []
+  },
+  {
+    "id": "TWSE-WEB-FACE",
+    "url": "https://www.twse.com.tw/rwd/zh/change/TWTB7U",
+    "provider": "TWSE",
+    "branch": "events",
+    "kind": "trading_risk",
+    "enabled": false,
+    "fields": []
+  },
+  {
+    "id": "TPEx-WEB-DELIST",
+    "url": "https://www.tpex.org.tw/www/zh-tw/company/deListed",
+    "provider": "TPEx",
+    "branch": "events",
+    "kind": "trading_risk",
+    "enabled": false,
+    "fields": []
+  },
+  {
+    "id": "TPEx-WEB-REDUCTION",
+    "url": "https://www.tpex.org.tw/www/zh-tw/bulletin/decap",
+    "provider": "TPEx",
+    "branch": "events",
+    "kind": "trading_risk",
+    "enabled": false,
+    "fields": []
+  },
+  {
+    "id": "TPEx-WEB-FACE",
+    "url": "https://www.tpex.org.tw/www/zh-tw/bulletin/pvChgAnn",
+    "provider": "TPEx",
+    "branch": "events",
+    "kind": "trading_risk",
+    "enabled": false,
+    "fields": []
   }
 ]

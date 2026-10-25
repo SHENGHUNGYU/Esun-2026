@@ -102,7 +102,11 @@ def test_resume_and_artifact_integrity(environment):
     Path(result['report']).write_text('corrupted')
     with pytest.raises(ValueError,match='hash mismatch'):run(environment)
 
-def test_full_rotation_allows_sixty_orders(environment):
+@pytest.mark.parametrize('include_risk',[False,True])
+def test_full_rotation_allows_sixty_orders(environment,include_risk):
+    if include_risk:
+        from test_risk import with_risk
+        environment=with_risk(environment,'9999')
     store,sources,universe,pack,policy,schema,req=environment
     holdings=[{'code':str(1000+i),'shares':100000,'receivable_shares':0,'close_price':str(102+i),'tradable_weight':None} for i in range(30)]
     cash=Decimal(1000000000)-sum(Decimal(h['close_price'])*h['shares'] for h in holdings)
@@ -121,6 +125,7 @@ def test_full_rotation_allows_sixty_orders(environment):
     plan=document((store,sources,universe,changed,policy,schema,req),result)
     assert len(plan['orders'])==len(plan['decisions'])==60
     assert store.json(result['validation'])['schema_and_semantics_pass']
+    assert len(plan['observations'])<=100 and all(len(o['source_ref'])<=10 for o in plan['observations'])
 
 def test_reference_date_and_code_identity_are_bound(environment):
     store,sources,universe,pack,policy,schema,req=environment

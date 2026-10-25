@@ -159,6 +159,23 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models):
         'rows':[{'source_id':r['source_id'],'raw_ref':r['raw_ref'],'raw_row':r['raw_row']} for r in quote_by.values()]}}
     if market_index:
         lineage['O1']['rows'].append({'source_id':market_index['source_id'],'raw_ref':market_index['raw_ref'],'raw_row':market_index['raw_row']})
+    risk_observations=defaultdict(list)
+    if risk:
+        for provider in sorted({e['provider'].upper() for e in risk['feed_refs'].values()}):
+            ids=sorted(sid for sid,e in risk['feed_refs'].items() if e['provider'].upper()==provider)
+            members=[code for code,q in quote_by.items() if models[q['source_id']].provider.upper()==provider]
+            for start in range(0,len(ids),10):
+                group=ids[start:start+10];oid='O'+str(len(observations)+1)
+                risk_observations[provider].append(oid)
+                observations.append({'obs_id':oid,'source_ref':[smap[sid] for sid in group],
+                    'topic':'trading_risk_snapshot',
+                    'statement':'已依本組封存官方事件快照核對本市場競賽股票；下列檔數按本組來源去重，各來源組之間不可直接相加。資料範圍仍未完整涵蓋合併與企業分割，後續公告也尚未知。',
+                    'values':{'cited_source_count':len(group),'market_universe_count':len(members),
+                        'new_buy_blocked_count':sum(any(f['source_id'] in group and f['blocks_new_buys'] for f in risk['securities'][c]['flags']) for c in members),
+                        'sell_blocked_count':sum(any(f['source_id'] in group and f['blocks_sells'] for f in risk['securities'][c]['flags']) for c in members)}})
+                lineage[oid]={'derivation':'deduplicated blocked securities within this cited source group; groups cannot be added',
+                    'risk_feed_refs':{sid:risk['feed_refs'][sid] for sid in group},
+                    'market_risk_states':{c:risk['securities'][c] for c in members}}
     inferences=[];decisions=[];unchanged=[]
     for code in involved:
         q=quote_by[code];c=bycode.get(code);oid='O'+str(len(observations)+1)
@@ -180,8 +197,6 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models):
             reason=next((e['reason'] for e in snapshot['exclusions'] if e['code']==code),'not_eligible')
             statement+='候選資料／條件檢查：'+reason+'。'
         if risk:
-            refs.update(smap[sid] for sid in risk['feed_refs'] if models[sid].provider.upper()==models[q['source_id']].provider.upper())
-            values['risk_snapshot_flag_count']=len(risk['securities'][code]['flags'])
             statement+='已依封存的交易事件快照執行內部篩選；快照時間不等於後續公告已完整，仍須於收件窗重抓。'
         observations.append({'obs_id':oid,'source_ref':sorted(refs),'topic':'company_facts','statement':statement,'values':values})
         lineage[oid]={'code':code,'rows':[{'source_id':r['source_id'],'raw_ref':r['raw_ref'],'raw_row':r['raw_row'],'date':r['date'],'available_at':r['available_at']} for r in raw],
@@ -193,7 +208,8 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models):
         selected=code in targets
         logic=(f'依{policy.version}對正營收成長、正本益比與流動性作百分位加權排序，並限制產業集中及整張預算；'
                +('本檔進入分散候選，依固定等權政策換算目標部位。' if selected else '本檔未進入本次完整資料且分散限制下的候選，依規則退出可交易部位，不代表預測一定下跌。'))
-        inferences.append({'inf_id':iid,'premise_refs':[oid,'O1'],'logic':logic,
+        risk_refs=risk_observations.get(models[q['source_id']].provider.upper(),[]) if risk else []
+        inferences.append({'inf_id':iid,'premise_refs':[oid,'O1',*risk_refs],'logic':logic,
           'counter_evidence':'單月成長、本益比與單日流動性無法驗證完整品質或長期趨勢；未完成樣本外績效驗證。'})
         old=held.get(code,0);weight=targets.get(code,0);new=target_shares(weight,pack.account.nav_tradable,prices[code])
         if new==old:

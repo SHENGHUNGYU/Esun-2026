@@ -90,6 +90,7 @@ def build():
         html=html.replace('href="../18-candidate-implementation.md"','href="#doc=18-candidate-implementation.md"')
         html=html.replace('href="../19-trading-risk-gate.md"','href="#doc=19-trading-risk-gate.md"')
         html=html.replace('href="../21-application-and-llm.md"','href="#doc=21-application-and-llm.md"')
+        html=html.replace('href="../26-corporate-action-gate.md"','href="#doc=26-corporate-action-gate.md"')
         html=html.replace('href="../01-rules.md"','href="#doc=01-rules.md"')
         html=re.sub(r'href="(?:\.\./)?api-research/etf-holdings-readiness-2026-10-24.md"', 'href="#doc=20-etf-source-readiness.md"',html)
         html=re.sub(r'href="(?:\.\./)?api-research/etf-acquisition-2026-10-26.md"', 'href="#doc=23-etf-acquisition.md"',html)

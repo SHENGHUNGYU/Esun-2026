@@ -10,6 +10,7 @@ from datetime import date, datetime, time, timedelta
 from pydantic import BaseModel, ConfigDict, Field
 from .contracts import instant, TAIPEI
 from .normalize import day
+from .event_transport import REPORTS
 
 FEEDS = {
     'TWSE-063':'halts', 'TWSE-072':'altered', 'TWSE-108':'disposition',
@@ -17,6 +18,7 @@ FEEDS = {
     'TPEx-003':'halt_today', 'TPEx-004':'halts', 'TPEx-015':'ex_date',
     'TPEx-016':'status', 'TPEx-020':'attention', 'TPEx-021':'disposition',
 }
+FEEDS.update({sid:'web_'+value[2] for sid,value in REPORTS.items()})
 
 class RiskPolicy(BaseModel):
     model_config = ConfigDict(extra='forbid', frozen=True)
@@ -76,19 +78,36 @@ def assess(store, sources, frozen, universe, policy):
         if instant(c['fetched_at'])<threshold:blockers.append('risk_snapshot_needs_trade_window_refresh')
         try:
             rows=json.loads(store.read(c['ref']))
-            if not isinstance(rows,list):raise ValueError('expected_array')
+            if sid in REPORTS:
+                from .exchange_events import rows as report_rows
+                rows=report_rows(sid,rows)
+            elif not isinstance(rows,list):raise ValueError('expected_array')
         except (ValueError,TypeError):
             h['status']='invalid';errors.append('risk_feed_invalid:'+sid);continue
         h['rows']=len(rows)
         def add(code,kind,buy=True,sell=True,**info):
             state=states[code];state['buy_allowed'] &= buy;state['sell_allowed'] &= sell
-            state['flags'].append({'kind':kind,'source_id':sid,'raw_ref':c['ref'],'raw_row':index,**info})
+            state['flags'].append({'kind':kind,'source_id':sid,'raw_ref':c['ref'],'raw_row':index,
+                'blocks_new_buys':not buy,'blocks_sells':not sell,**info})
         for index,raw in enumerate(rows):
             code=None
             try:
                 if not isinstance(raw,dict):raise ValueError('expected_object')
                 row={str(k).strip():v for k,v in raw.items()}
                 if len(row)!=len(raw):raise ValueError('trimmed_key_collision')
+                if sid in REPORTS:
+                    from .exchange_events import event
+                    values=row['values']
+                    code=str(next(values[k] for k in ['證券代號','股票代號','代號','上市編號'] if k in values)).strip()
+                    if not re.fullmatch(r'\d{4,6}',code):raise ValueError('invalid_event_security')
+                    if code not in states:continue
+                    h['in_universe_rows']+=1
+                    if universe[code]['market'].upper()!=models[sid].provider.upper():raise ValueError('security_market_mismatch')
+                    item=event(sid,values,reference.isoformat(),trade.isoformat())
+                    item.pop('code')
+                    add(code,item.pop('kind'),buy=item.pop('buy_allowed'),sell=item.pop('sell_allowed'),
+                        page=row['page'],page_row=row['page_row'],**item)
+                    continue
                 key='Code' if sid.startswith('TWSE') else 'SecuritiesCompanyCode'
                 if key not in row:raise ValueError('missing_security_field')
                 if role=='halt_today' and date.fromisoformat(day(row['Date']))>cutoff.date():raise ValueError('record_date_after_cutoff')
@@ -138,7 +157,7 @@ def assess(store, sources, frozen, universe, policy):
                     parsed=[(kind,event_time(d,t)) for kind,d,t in pairs if str(d).strip()]
                     if len(parsed)==2 and parsed[1][1]<=parsed[0][1]:raise ValueError('nonpositive_halt_interval')
                     for kind,stamp in parsed:timeline[code].append({'event':kind,'at':stamp.isoformat(),**evidence})
-            except (ValueError,KeyError,TypeError) as e:
+            except (ValueError,KeyError,TypeError,StopIteration) as e:
                 detail=str(e)[:160]
                 if code in states:add(code,'unresolved_event',buy=False,sell=False,detail=detail)
                 else:errors.append('risk_unscoped_row_error:'+sid+':'+str(index))
@@ -159,12 +178,13 @@ def assess(store, sources, frozen, universe, policy):
         for start,end in intervals:
             if instant(start['at'])<=closing and (end is None or end>opening):
                 states[code]['buy_allowed']=states[code]['sell_allowed']=False
-                states[code]['flags'].append({'kind':'halt_overlaps_session',**start,'resume_at':end.isoformat() if end else None})
+                states[code]['flags'].append({'kind':'halt_overlaps_session',**start,'resume_at':end.isoformat() if end else None,
+                    'blocks_new_buys':True,'blocks_sells':True})
         states[code]['halt_timeline']=sorted(events,key=lambda e:e['at'])
     return {'policy':policy.model_dump(),'trade_date':trade.isoformat(),'reference_date':reference.isoformat(),
         'feeds':health,'feed_refs':feed_refs,'securities':states,'errors':sorted(set(errors)),
         'release_blockers':sorted(set(blockers)),
-        'scope_note':'Absence in these snapshots is not exchange certification. No complete delisting/formal-suspension or capital-reduction/merger/split coverage; refresh in the collection window; disposition dates may be extended by exchange notices.'}
+        'scope_note':'Includes official financial-abnormality suspension, current-year delistings, capital-reduction and face-value-change forecasts. No complete merger/demerger/organization-change consideration chain; old forecasts are not a historical PIT calendar. Refresh in the collection window; absence is not exchange certification.'}
 
 def order_errors(report,orders):
     return ['risk_order_not_allowed:'+o['ticker']+':'+o['side'] for o in orders

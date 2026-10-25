@@ -1,22 +1,26 @@
 # 指定30檔 ETF 持股實際取得與驗證（2026-10-26）
 
-已實際下載並正規化 **13／30檔** 的10/22股票快照，合計602筆股票紀錄（12檔由來源明示日期、台新00987A由官方PCF公告時序推導）；另3檔保留真實10/21日期，共138筆。其餘14檔尚有日期、動態介面、下載定位或連線缺口。此結果供已覆蓋資料的內部Active Share計算，**不能宣稱全30檔通過**。本次不使用FinMind Sponsor資料或任何付費API，不尋找token，不繞過403、CAPTCHA或其他限制。
+已實際下載並正規化 **17／30檔** 的10/22股票快照，合計849筆股票紀錄；另5檔保留來源10/21日期，共231筆。其餘8檔尚未取得完整快照。日期推導個案保留標籤，**不能宣稱全30檔通過**。本次不用FinMind或付費API；只沿公開網頁正常匿名流程，不讀取私人登入憑證，不繞過403或CAPTCHA。
 
 ## 可接入的快照
 
 |ETF|投信|股票數|NAV權重合計|評價日|PCF適用日|原始證據|
 |---|---|---:|---:|---|---|---|
 |00405A|富邦投信|47|0.952210|2026-10-22|不適用／未提供|[官方來源](https://websys.fsit.com.tw/FubonETF/Fund/Assets.aspx?stkId=00405A)|
+|00406A|中國信託投信|62|0.8554|2026-10-22|2026-10-27|[官方來源](https://www.ctbcinvestments.com.tw/API/etf/Buyback)|
 |00407A|凱基投信|50|0.9448|2026-10-22|不適用／未提供|[官方來源](https://www.kgifund.com.tw/Fund/Detail?fundID=J024)|
 |00408A|第一金投信|52|0.9221|2026-10-22|2026-10-23|[官方來源](https://www.fsitc.com.tw/WebAPI.aspx/Get_hd)|
 |00410A|永豐投信|28|0.8808|2026-10-22|2026-10-27|[官方來源](https://sitc.sinopac.com/SinopacEtfs/Etfs/SinglePcf/00410A)|
 |00980A|野村投信|50|0.9501|2026-10-22|不適用／未提供|[官方來源](https://www.nomurafunds.com.tw/API/ETFAPI/api/Fund/GetFundAssets)|
 |00982A|群益投信|57|0.970203|2026-10-22|2026-10-27|[官方來源](https://www.capitalfund.com.tw/CFWeb/api/etf/buyback)|
+|00984A|安聯投信|80|0.9845|2026-10-22|2026-10-27|[官方來源](https://etf.allianzgi.com.tw/webapi/api/Fund/GetFundAssets)|
 |00985A|野村投信|50|0.9107|2026-10-22|不適用／未提供|[官方來源](https://www.nomurafunds.com.tw/API/ETFAPI/api/Fund/GetFundAssets)|
 |00987A|台新投信|28|0.964549|2026-10-22|2026-10-23|[官方來源](https://www.tsit.com.tw/ETF/Home/Pcf/00987A?DataDate=2026-10-27&FundType=ALL)|
 |00991A|復華投信|50|0.98767|2026-10-22|不適用／未提供|[官方來源](https://www.fhtrust.com.tw/api/assetsExcel/ETF23/20261022)|
 |00992A|群益投信|43|0.960759|2026-10-22|2026-10-27|[官方來源](https://www.capitalfund.com.tw/CFWeb/api/etf/buyback)|
+|00993A|安聯投信|50|0.9679|2026-10-22|2026-10-27|[官方來源](https://etf.allianzgi.com.tw/webapi/api/Fund/GetFundAssets)|
 |00994A|第一金投信|40|0.9616|2026-10-22|2026-10-23|[官方來源](https://www.fsitc.com.tw/WebAPI.aspx/Get_hd)|
+|00995A|中國信託投信|55|0.9722|2026-10-22|2026-10-27|[官方來源](https://www.ctbcinvestments.com.tw/API/etf/Buyback)|
 |00996A|兆豐投信|53|0.9665|2026-10-22|不適用／未提供|[官方來源](https://www.megafunds.com.tw/MEGA/etf/etf_product.aspx?id=23)|
 |00999A|野村投信|54|0.9469|2026-10-22|不適用／未提供|[官方來源](https://www.nomurafunds.com.tw/API/ETFAPI/api/Fund/GetFundAssets)|
 
@@ -50,7 +54,7 @@
 
 [第一金首頁](https://www.fsitc.com.tw/)明示00994A產品ID182、00408A產品ID183；其[基金頁](https://www.fsitc.com.tw/FundDetail.aspx?ID=182)公開Get_hd查詢（WebAPI.aspx/Get_hd）逐股sdate明示10/22，group=1為股票，分別40與52筆；NAV另綁Get_BuySellA原回應hash，摘要10/23是PCF適用日。解析器normalize_firstgold.py。
 
-台新00987A依[官方公開說明書](https://www.tsit.com.tw/active/202512TSIT_00987A/pdf/TSIT_00987A_Prospectus.pdf)PDF第9頁／印刷第7頁，十四(二)1的公告時序：每營業日NAV結算後公告次營業日PCF。原HTML回PUB_DATE=10/23，價金欄10/22，因此內部將28股票推導為10/22；標valuation_date_basis=official_pcf_timing_inference，公開說明書原PDF及hash另綁。**不宣稱股票區獨立明示日期，也不是官方Active Share日期認證**。解析器normalize_taishin_inference.py。其他12份標explicit_source_date。
+台新00987A依[官方公開說明書](https://www.tsit.com.tw/active/202512TSIT_00987A/pdf/TSIT_00987A_Prospectus.pdf)PDF第9頁／印刷第7頁，十四(二)1的公告時序：每營業日NAV結算後公告次營業日PCF。原HTML回PUB_DATE=10/23，價金欄10/22，因此內部將28股票推導為10/22；標valuation_date_basis=official_pcf_timing_inference，公開說明書原PDF及hash另綁。**不宣稱股票區獨立明示日期，也不是官方Active Share日期認證**。解析器normalize_taishin_inference.py。其餘快照的日期依各自來源明示欄位，逐檔標記於manifest。
 
 ## 其他真實日期的完整快照
 
@@ -61,26 +65,32 @@ normalized-other-dates/00997A.json為群益47股、00990A.json為元大42股、0
 |ETF|投信|阻礙與觀察|
 |---|---|---|
 |00981A|統一投信|統一官網首頁回302且Location指回相同URL，無可讀主頁；既有產品指南PDF不能替代每日持股。|
-|00983A|中國信託投信|官方.tw入口504；官方.com SPA可讀；其公開程式包含home/AuthToken初始化與API token參數，依不找token限制未呼叫認證流程；匿名資料權限尚未驗證，未取得直接持股下載。|
-|00984A|安聯投信|產品頁連線逾時；另公開ETF主程式可讀，唯讀總覽API以官網參數查詢回400，未取得資產資料。|
+|00983A|中國信託投信|官方完整43股已取得，來源淨值日期10/21；保留真實日期，不升格10/22。|
 |00986A|台新投信|完整36股已封存，但頁內申贖結算日為10/21，PUB_DATE=10/23；不能把夾限的PCF日期當股票10/22評價日。|
 |00989A|摩根投信|官方產品與基金頁需動態投資組合介面；尚未取得10/22實際股票明細。|
 |00988A|統一投信|既有入口為申購指南PDF，非持股資料；未驗證當期日持股。|
 |00990A|元大投信|已下載官方ratio與PCF完整回應；股票區明示交易日10/21，雖頁面上傳10/22、公告10/23，也不能改標10/22。|
-|00995A|中國信託投信|官方.tw入口504；官方.com SPA可讀；其公開程式包含home/AuthToken初始化與API token參數，依不找token限制未呼叫認證流程；匿名資料權限尚未驗證，未取得直接持股下載。|
-|00993A|安聯投信|產品行銷頁可讀；公開主程式查明GetFundAssets，但總覽查詢回400，未猜測內部識別或繞過驗證。|
 |00400A|國泰投信|官方PCF回HTTP403，停止該路徑，未繞過。|
 |00401A|摩根投信|官方portfolio頁下載成功但主要為動態介面，尚未解析出完整當期股票及NAV權重。|
 |00997A|群益投信|官方完整唯讀API取得47股票；PCF適用10/27但評價date2=10/21，未作10/22通過證據。|
 |00403A|統一投信|既有入口為產品指南PDF，非持股資料；未驗證當期日持股。|
-|00402A|安聯投信|產品行銷頁可讀；公開資產API尚未接通。|
+|00402A|安聯投信|官方完整50股已取得，來源NavDate明示10/21；PCFDate為10/27，未作10/22證據。|
 |00404A|聯博投信|官方產品頁已下載；其中PCF超連結指向其他基金ISIN，不能據此混用為00404A持股，仍缺正確下載。|
-|00406A|中國信託投信|官方.tw入口504；官方.com SPA可讀；其公開程式包含home/AuthToken初始化與API token參數，依不找token限制未呼叫認證流程；匿名資料權限尚未驗證，未取得直接持股下載。|
 |00409A|復華投信|官方基金資產頁可讀且下載入口明列ETF26/20261021，基準日10/21；不是10/22證據。|
+
+## 中信與安聯公開查詢補充
+
+[中信官方公開ETF頁](https://www.ctbcinvestments.com/ETF)的Buyback程式指向`.com.tw/API`；正常匿名home/AuthToken初始化後，ETFCNOList明確對應基金代碼與FID，再查etf/Buyback。匿名session僅在記憶體，不寫入原始檔、URL metadata或日誌。00995A為55股、00406A為62股，淨值日期10/22；00983A為43股，淨值日期10/21，未硬改日期。台股金額/NAV逐筆核對披露權重；海外資料保留原權重，不虛構匯率精度。
+
+[安聯官方ETF頁](https://etf.allianzgi.com.tw/instant-estimated)主程式的正常初始化先呼叫AntiForgery/GetAntiForgeryToken，使用匿名cookie配對X-XSRF-TOKEN，並非登入。GetFundOverview提供基金代碼與CFundNo對照；GetFundAssets取得完整股票表。00984A為80股、00993A為50股，NavDate明示10/22；00402A為50股，NavDate明示10/21。PCFDate獨立為10/27。已封存匿名查詢的持股／識別回應，未保存cookie或防偽值。
+
+## 每日更新實作
+
+應用已加入collect-etfs與本機「資料與持股」更新功能，首批支援野村3、安聯3、中信3、群益2共11檔。來源失敗會覆蓋最新狀態為失敗，不能悄悄沿用舊快照；評價日不符會保留真實資料並標date_mismatch，候選比較仍阻擋。來源與對照原回應hash均綁定封存。其餘完整快照仍可由檔案匯入，不把已手工取得視為自動每日覆蓋。
 
 ## 不可忽略的限制
 
-- 目前13份只證明這些股票表可取得，其中一份評價日依官方時序推導；並未驗證之後每日更新、服務可靠度或全部30檔同日完整性。
+- 目前已取得的快照只證明這些股票表可取得，其中一份評價日依官方時序推導；並未驗證之後每日更新、服務可靠度或全部30檔同日完整性。
 - 原始抓取與first_seen均為10/26，不能插入10/24截止的舊run、不能回填成10/22公開可得時間。
 - 海外ETF常見10/21評價日、10/22上傳、10/27 PCF適用同時存在。這些欄位必須分開，未確認官方比較日期政策前不能硬改成10/22。
 - Active Share正規化／前15大之外權重／海外比較方式仍依主辦方答覆；內部雙口徑及緩衝不等於官方認證。
@@ -89,4 +99,8 @@ normalized-other-dates/00997A.json為群益47股、00990A.json為元大42股、0
 
 ## 下一步
 
-將13檔原始hash與正規化JSON接入benchmark contract，並保留台新推導日期標籤，缺任何ETF保持未驗證。其餘優先取得統一／中信／安聯日持股公開下載、補齊聯博及摩根介面，以及海外基金評價日政策；若有主辦方提供的官方ETF benchmark檔，應優先使用並另行驗證。
+將已取得快照的原始hash與正規化JSON接入benchmark contract，並保留台新推導日期標籤，缺任何ETF保持未驗證。其餘優先取得統一／摩根／聯博日持股公開下載，並排查中信每日更新連線、補齊聯博及摩根介面，以及海外基金評價日政策；若有主辦方提供的官方ETF benchmark檔，應優先使用並另行驗證。
+
+## 自動更新實測資格
+
+新collect-etfs流程以已授權SSH遠端實測：野村3、安聯3、群益2檔取得成功（其中安聯00402A保留10/21）；中信3檔新流程回HTTP403，未反覆變換參數或憑證繞過。先前中信正常匿名查詢取得的原始持股仍保留為研究證據，不能據此宣稱新更新流程已通過每日驗收。最新完整候選比較17檔有效日期，最低內部雙口徑AS約41.79%；全30檔及官方算法仍未完成。

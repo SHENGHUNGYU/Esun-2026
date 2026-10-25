@@ -1,0 +1,14 @@
+{
+  "url": "https://etf.allianzgi.com.tw/webapi/api/Fund/GetFundOverview",
+  "method": "POST",
+  "request": {
+    "Keyword": "",
+    "FundNo": "",
+    "FundType": -1,
+    "PageSize": 999,
+    "PageIndex": 1
+  },
+  "status": 200,
+  "fetched_at": "2026-10-26T03:47:02.577132+08:00",
+  "sha256": "81e02ae119225a46da00f84594ec9126536f4179ebf2f0849067cd13dbec930e"
+}

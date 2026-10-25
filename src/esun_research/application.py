@@ -7,6 +7,7 @@ import subprocess
 import sys
 import threading
 import uuid
+from datetime import date
 from pathlib import Path
 from fastapi import FastAPI,Request,UploadFile,File,Form,HTTPException
 from fastapi.responses import HTMLResponse,FileResponse,JSONResponse,Response
@@ -34,6 +35,11 @@ class RunInput(BaseModel):
     model_config=ConfigDict(extra='forbid')
     datapack_id: str
     llm: bool=True
+
+class ETFCollectionInput(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    reference_date: date
+    pcf_date: date
 
 class Jobs:
     def __init__(self,root):
@@ -99,7 +105,16 @@ def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',
         runs=[]
         for p in sorted((store.root/'candidates').glob('*/manifest.json'),key=lambda p:p.stat().st_mtime,reverse=True) if (store.root/'candidates').exists() else []:
             m=json.loads(p.read_bytes());runs.append({'run_id':p.parent.name,'status':m['status'],'trade_date':m['request']['trade_date'],'mode':m['request']['mode'],'llm':bool(m['request'].get('llm_ref'))})
-        return {'at':now(),'sources':sources,'etf_imported':sum(store.select('ETF:'+c,now()).get('status')=='ok' for c in codes),'etf_expected':30,
+        from .issuer_holdings import SUPPORTED
+        benchmarks=[]
+        for code in codes:
+            capture=store.select('ETF:'+code,now());value=store.json(capture['ref'])['benchmark'] if capture.get('status')=='ok' else None
+            benchmarks.append({'code':code,'status':capture['status'],'fetched_at':value['fetched_at'] if value else None,
+                'valuation_date':value['valuation_date'] if value else None,'equity_count':len(value['holdings']) if value else None,
+                'auto_supported':any(code in group for group in SUPPORTED.values())})
+        session=json.loads((PROJECT/'config/competition-session.json').read_bytes())
+        return {'at':now(),'sources':sources,'etf_imported':sum(b['status']=='ok' for b in benchmarks),'etf_expected':30,'benchmarks':benchmarks,
+            'first_reference_date':session['first_reference_date'],
             'runs':runs,'jobs':jobs.list(),'receipts':receipts(store),'model_configured':bool(model_config and model_config.exists()),
             'notice':'本機資料與操作紀錄；正式上傳及送出由官方後台完成。'}
     @app.post('/api/datapack')
@@ -113,6 +128,12 @@ def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',
         args=['--root',str(store.root),'ingest','--profile','decision']
         if ssh_host:args+=['--ssh-host',ssh_host]
         return jobs.start(args,'collect')
+    @app.post('/api/benchmarks/collect')
+    def collect_benchmarks(data:ETFCollectionInput):
+        if data.reference_date>date.today() or data.pcf_date<data.reference_date:raise ValueError('請核對評價基準日與PCF適用日')
+        args=['--root',str(store.root),'collect-etfs','--reference-date',str(data.reference_date),'--pcf-date',str(data.pcf_date)]
+        if ssh_host:args+=['--ssh-host',ssh_host]
+        return jobs.start(args,'collect_etfs')
     @app.get('/api/jobs/{ident}/log')
     def job_log(ident):
         if not re.fullmatch(r'[a-f0-9]{32}',ident):raise HTTPException(404)

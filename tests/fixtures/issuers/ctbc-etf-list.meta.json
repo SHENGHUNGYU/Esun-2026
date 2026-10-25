@@ -1,0 +1,9 @@
+{
+  "label": "ctbc-etf-list",
+  "url": "https://www.ctbcinvestments.com.tw/API/etf/ETFCNOList",
+  "request": {},
+  "fetched_at": "2026-10-25T19:24:22.291609+00:00",
+  "status": 200,
+  "sha256": "6de399c4a7a650afd083c2986d27d1ea1c4e4012a61634aed0902262a0695369",
+  "transport": "authorized_ssh_public_read"
+}

@@ -1,0 +1,12 @@
+{
+  "label": "ctbc-00995A-holdings",
+  "url": "https://www.ctbcinvestments.com.tw/API/etf/Buyback",
+  "request": {
+    "FID": "E0036",
+    "StartDate": "2026-10-27"
+  },
+  "fetched_at": "2026-10-25T19:24:22.295492+00:00",
+  "status": 200,
+  "sha256": "46621c4173d9ec6e686d22781ae89b05a2b0904cda2d0655bf06490190ddbe2a",
+  "transport": "authorized_ssh_public_read"
+}

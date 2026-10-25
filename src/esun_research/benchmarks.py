@@ -38,6 +38,8 @@ class Benchmark(BaseModel):
     nav_source_raw_sha256: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
     prospectus_source_url: str | None = None
     prospectus_raw_sha256: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
+    identity_source_url: str | None = None
+    identity_raw_sha256: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
     holdings: list[Equity] = Field(min_length=1,max_length=2000)
 
     @model_validator(mode='after')
@@ -50,6 +52,7 @@ class Benchmark(BaseModel):
         if len(ids)!=len(set(ids)):raise ValueError('duplicate_benchmark_security')
         if not 0<sum(h.weight_nav for h in self.holdings)<=Decimal('1.0001'):raise ValueError('invalid_equity_weight_sum')
         if bool(self.nav_source_url)!=bool(self.nav_source_raw_sha256) or bool(self.prospectus_source_url)!=bool(self.prospectus_raw_sha256):raise ValueError('incomplete_supporting_source')
+        if bool(self.identity_source_url)!=bool(self.identity_raw_sha256):raise ValueError('incomplete_identity_source')
         if self.valuation_date_basis=='official_pcf_timing_inference' and not self.prospectus_raw_sha256:raise ValueError('pcf_timing_requires_official_prospectus')
         return self
 
@@ -60,7 +63,7 @@ def import_benchmark(store,body,raw,allowed_codes,allowed_hosts,supporting_raws=
     if digest(raw)!=value.raw_sha256:raise ValueError('benchmark_raw_hash_mismatch')
     if value.evidence_kind!='official_actual_holdings_table' or not value.complete_equity_table:raise ValueError('actual_complete_equity_table_required')
     supporting_refs={}
-    for url,sha in [(value.nav_source_url,value.nav_source_raw_sha256),(value.prospectus_source_url,value.prospectus_raw_sha256)]:
+    for url,sha in [(value.nav_source_url,value.nav_source_raw_sha256),(value.prospectus_source_url,value.prospectus_raw_sha256),(value.identity_source_url,value.identity_raw_sha256)]:
         if not sha:continue
         parsed=urlparse(url)
         if parsed.scheme!='https' or parsed.hostname not in allowed_hosts or parsed.username or parsed.password:raise ValueError('unverified_supporting_source')
@@ -96,7 +99,7 @@ def evaluate(store,refs,weights,expected_codes,valuation_date,cutoff,buffer):
             if benchmark.valuation_date.isoformat()!=str(valuation_date):raise ValueError('benchmark_valuation_date_mismatch')
             if instant(wrapper['imported_at'])>instant(cutoff) or instant(benchmark.fetched_at)>instant(cutoff):raise ValueError('benchmark_after_cutoff')
             if digest(store.read(wrapper['raw_ref']))!=benchmark.raw_sha256:raise ValueError('benchmark_raw_hash_mismatch')
-            for sha in [benchmark.nav_source_raw_sha256,benchmark.prospectus_raw_sha256]:
+            for sha in [benchmark.nav_source_raw_sha256,benchmark.prospectus_raw_sha256,benchmark.identity_raw_sha256]:
                 if sha and digest(store.read(wrapper.get('supporting_refs',{})[sha]))!=sha:raise ValueError('supporting_raw_hash_mismatch')
             if benchmark.evidence_kind!='official_actual_holdings_table' or not benchmark.complete_equity_table:raise ValueError('actual_complete_equity_table_required')
             values=compare(own,{h.security_id:h.weight_nav for h in benchmark.holdings})

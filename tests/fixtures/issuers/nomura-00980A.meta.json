@@ -1,0 +1,13 @@
+{
+  "url": "https://www.nomurafunds.com.tw/API/ETFAPI/api/Fund/GetFundAssets",
+  "method": "POST",
+  "request": {
+    "FundID": "00980A",
+    "SearchDate": "2026-10-22"
+  },
+  "status": 200,
+  "content_type": "application/json; charset=utf-8",
+  "sha256": "79604cff247b996338f8ac16fe88ecbcb0659082bb81ed83ff50bb8bfa2f982d",
+  "bytes": 3350,
+  "fetched_at": "2026-10-25T17:03:08.718150+00:00"
+}

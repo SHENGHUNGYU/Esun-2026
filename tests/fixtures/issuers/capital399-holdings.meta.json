@@ -1,0 +1,13 @@
+{
+  "url": "https://www.capitalfund.com.tw/CFWeb/api/etf/buyback",
+  "method": "POST",
+  "request": {
+    "fundId": "399",
+    "date": null
+  },
+  "fetched_at": "2026-10-25T16:46:49.592108+00:00",
+  "status": 200,
+  "sha256": "13600faca5172d387e4afd021188f7818d38e13a874c72691e4ad417f601fac4",
+  "request_started_at_recorded": "2026-10-25T16:46:49.592214+00:00",
+  "fetched_at_basis": "raw file persisted immediately after HTTP response; filesystem mtime UTC"
+}

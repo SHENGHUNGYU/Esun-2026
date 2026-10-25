@@ -2,10 +2,22 @@
 import json
 import sqlite3
 from pathlib import Path
-from pydantic import BaseModel,ConfigDict,Field
+from pydantic import BaseModel,ConfigDict,Field,StrictInt,model_validator
 from typing import Literal
 from .contracts import now
 from .store import encoded,digest
+
+class ConfirmedOrder(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    ticker: str=Field(pattern=r'^[0-9]{4,6}$')
+    side: Literal['BUY','SELL']
+    shares: StrictInt=Field(gt=0)
+    decision_ref: str | None=None
+
+    @model_validator(mode='after')
+    def whole_lot(self):
+        if self.shares%1000:raise ValueError('official_order_requires_whole_lot')
+        return self
 
 class ReceiptEvent(BaseModel):
     model_config=ConfigDict(extra='forbid')
@@ -13,7 +25,7 @@ class ReceiptEvent(BaseModel):
     validation: Literal['passed','warned','serious_error','failed','skipped'] | None = None
     official_reference: str = Field(min_length=1,max_length=200)
     statement: str = Field(min_length=10,max_length=1200)
-    orders: list[dict] | None = None
+    orders: list[ConfirmedOrder] | None = Field(default=None,max_length=60)
 
 def candidate_bundle(store,run_id):
     import re
@@ -34,14 +46,15 @@ def record_receipt(store,run_id,event,evidence=None):
     if event.stage!='upload_checked' and event.validation is not None:raise ValueError('validation_axis_belongs_to_upload_event')
     if event.stage=='orders_confirmed':
         signature=lambda rows:sorted((str(r['ticker']),r['side'],int(r['shares'])) for r in rows)
-        if event.orders is None or signature(event.orders)!=signature(plan['orders']):raise ValueError('official_orders_do_not_match_candidate')
+        if event.orders is None or signature(event.model_dump()['orders'])!=signature(plan['orders']):raise ValueError('official_orders_do_not_match_candidate')
     proof_ref=store.put(evidence,'bin') if evidence else None
     with store.connect() as db:
         db.execute('CREATE TABLE IF NOT EXISTS receipt_events(id INTEGER PRIMARY KEY,run_id TEXT,body TEXT,hash TEXT UNIQUE)')
         db.execute('BEGIN IMMEDIATE')
         previous=db.execute('SELECT body,hash FROM receipt_events WHERE run_id=? ORDER BY id DESC LIMIT 1',(run_id,)).fetchone()
         history=[json.loads(r[0]) for r in db.execute('SELECT body FROM receipt_events WHERE run_id=? ORDER BY id',(run_id,))]
-        if event.stage=='orders_confirmed' and not any(h['event']['stage']=='submitted' and h['plan_hash']==plan_hash for h in history):raise ValueError('submitted_evidence_required_before_orders_confirmation')
+        submissions=[h for h in history if h['event']['stage'] in {'submitted','submission_unknown'} and h['plan_hash']==plan_hash]
+        if event.stage=='orders_confirmed' and (not submissions or submissions[-1]['event']['stage']!='submitted'):raise ValueError('submitted_evidence_required_before_orders_confirmation')
         body={'at':now(),'run_id':run_id,'plan_hash':plan_hash,'event':event.model_dump(),'proof_ref':proof_ref,
             'source':'operator_uploaded_evidence' if evidence else 'operator_attestation','previous_event_hash':previous[1] if previous else None,
             'note':'This records evidence of a portal operation; no upload or submission was performed by this application.'}
@@ -56,7 +69,10 @@ def receipts(store,run_id=None):
 
 def reconcile(previous_pack,plan,next_pack):
     if previous_pack.team_id!=next_pack.team_id:raise ValueError('reconciliation_team_mismatch')
-    if next_pack.decision_gate().startswith('BLOCKED'):return {'status':'WAIT_OFFICIAL_INPUT','gate':next_pack.decision_gate()}
+    gate=next_pack.decision_gate()
+    if gate.startswith('BLOCKED'):
+        return {'status':'WAIT_OFFICIAL_OUTCOME' if gate=='BLOCKED_UNKNOWN_ORDER_OUTCOME' else 'WAIT_OFFICIAL_INPUT',
+            'gate':gate,'outcome':next_pack.prev_day_orders.outcome}
     if next_pack.as_of_date!=previous_pack.trade_date:raise ValueError('next_pack_does_not_settle_candidate_trade_date')
     outcome=next_pack.prev_day_orders.outcome
     old={h.code:h.shares for h in previous_pack.holdings if h.shares>0};expected=dict(old)

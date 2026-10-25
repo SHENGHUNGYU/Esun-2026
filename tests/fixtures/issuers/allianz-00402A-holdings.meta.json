@@ -1,0 +1,10 @@
+{
+  "url": "https://etf.allianzgi.com.tw/webapi/api/Fund/GetFundAssets",
+  "method": "POST",
+  "request": {
+    "FundID": "E0003"
+  },
+  "status": 200,
+  "fetched_at": "2026-10-26T03:48:23.769530+08:00",
+  "sha256": "6d685d2f00017863716acbd23aa0772599bd94d6bd67612514b4ded4aa04a9ec"
+}

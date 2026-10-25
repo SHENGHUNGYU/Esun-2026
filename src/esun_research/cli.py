@@ -57,6 +57,10 @@ def main():
     bench.add_argument('--file',type=Path,required=True)
     bench.add_argument('--raw',type=Path,required=True)
     bench.add_argument('--supporting-raw',type=Path,action='append',default=[])
+    issuer_collection=sub.add_parser('collect-etfs',help='更新已驗證的投信官方完整持股；不用FinMind')
+    issuer_collection.add_argument('--reference-date',required=True)
+    issuer_collection.add_argument('--pcf-date',required=True)
+    issuer_collection.add_argument('--ssh-host',choices=sorted(RemoteGateway.ALLOWED_HOSTS))
     run=sub.add_parser('research',help='使用截止時間以前已取得的快照')
     run.add_argument('--run-id',required=True)
     run.add_argument('--as-of',required=True,help='預期行情日 YYYY-MM-DD')
@@ -97,6 +101,12 @@ def main():
                 'team_id':official.team_id,'trade_date':official.trade_date.isoformat(),
                 'sha256':digest(body),'official_server_validation':False},ensure_ascii=False))
             if gate.startswith('BLOCKED'):raise SystemExit(2)
+        elif args.command=='collect-etfs':
+            from .issuer_holdings import collect
+            codes,hosts=benchmark_settings()
+            result=collect(store,args.reference_date,args.pcf_date,codes,hosts,args.ssh_host)
+            print(json.dumps(result,ensure_ascii=False,indent=2))
+            if any(x['status']=='error' for x in result):raise SystemExit(2)
         elif args.command=='import-etf':
             from .benchmarks import import_benchmark
             codes,hosts=benchmark_settings()

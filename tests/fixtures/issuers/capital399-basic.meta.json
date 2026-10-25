@@ -1,0 +1,8 @@
+{
+  "url": "https://www.capitalfund.com.tw/CFWeb/api/etf/basic/399",
+  "fetched_at": "2026-10-25T16:46:36.734257+00:00",
+  "status": 200,
+  "sha256": "c7626c2413eae53fa5e372c5b5847d100388fd5b6ee210104db2a505cbb71b27",
+  "request_started_at_recorded": "2026-10-25T16:46:36.734332+00:00",
+  "fetched_at_basis": "raw file persisted immediately after HTTP response; filesystem mtime UTC"
+}

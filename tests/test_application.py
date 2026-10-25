@@ -40,8 +40,25 @@ def test_receipt_states_do_not_send_or_claim_orders_confirmation(environment):
     record_receipt(store,req.run_id,ReceiptEvent(stage='submitted',official_reference='submission1',statement='已在歷史紀錄確認本版正式繳交。'))
     record_receipt(store,req.run_id,confirmed)
     assert len(receipts(store,req.run_id))==3
-    bad=confirmed.model_copy(update={'orders':plan['orders'][:-1]})
+    bad=ReceiptEvent.model_validate({**confirmed.model_dump(),'orders':plan['orders'][:-1]})
     with pytest.raises(ValueError):record_receipt(store,req.run_id,bad)
+    record_receipt(store,req.run_id,ReceiptEvent(stage='submission_unknown',official_reference='timeout',statement='後續重新送出的結果尚未從後台確認。'))
+    with pytest.raises(ValueError,match='submitted_evidence'):record_receipt(store,req.run_id,confirmed)
+
+
+def test_order_confirmation_rejects_coerced_or_fractional_shares():
+    base={'stage':'orders_confirmed','official_reference':'checked','statement':'已從官方當日委託畫面逐筆抄錄。'}
+    for quantity in [True,'1000',1000.9,1001,-1000]:
+        with pytest.raises(ValueError):ReceiptEvent(**base,orders=[{'ticker':'2330','side':'BUY','shares':quantity}])
+
+
+def test_unknown_official_outcome_is_not_completed_reconciliation(environment):
+    store,sources,universe,pack,policy,schema,req=environment
+    result=generate_candidate(store,req,sources,universe);plan=store.json(result['plan'])['plan']
+    data=pack.model_dump(mode='json');data.update(trade_date='2026-10-28',as_of_date='2026-10-27')
+    data['prev_day_orders']['outcome']='unknown'
+    report=reconcile(pack,plan,DataPack.model_validate(data))
+    assert report['status']=='WAIT_OFFICIAL_OUTCOME' and report['outcome']=='unknown'
 
 
 def test_partial_execution_reconciles_official_shares_and_distinguishes_notices(environment):

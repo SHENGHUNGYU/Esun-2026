@@ -13,6 +13,7 @@ def public_doc_sources():
     result.append(('20-etf-source-readiness.md',ROOT/'api-research/etf-holdings-readiness-2026-10-24.md'))
     result.append(('23-etf-acquisition.md',ROOT/'api-research/etf-acquisition-2026-10-26.md'))
     result.append(('24-history-feasibility.md',ROOT/'api-research/history-feasibility-2026-10-26.md'))
+    result.append(('25-trading-events-coverage.md',ROOT/'api-research/trading-events-coverage-2026-10-26.md'))
     return result
 
 def parse_todo(text):
@@ -93,6 +94,7 @@ def build():
         html=re.sub(r'href="(?:\.\./)?api-research/etf-holdings-readiness-2026-10-24.md"', 'href="#doc=20-etf-source-readiness.md"',html)
         html=re.sub(r'href="(?:\.\./)?api-research/etf-acquisition-2026-10-26.md"', 'href="#doc=23-etf-acquisition.md"',html)
         html=re.sub(r'href="(?:\.\./)?api-research/history-feasibility-2026-10-26.md"', 'href="#doc=24-history-feasibility.md"',html)
+        html=re.sub(r'href="(?:\.\./)?api-research/trading-events-coverage-2026-10-26.md"', 'href="#doc=25-trading-events-coverage.md"',html)
         html=re.sub(r'<a href="R02_RESEARCH_DEFERRED.md">(.*?)</a>',r'\1（本地封存）',html)
         html=re.sub(r'href="([\w-]+\.md)"',r'href="#doc=\1"',html)
         documents.append({'id':name,'title':s.splitlines()[0][2:],'html':html})

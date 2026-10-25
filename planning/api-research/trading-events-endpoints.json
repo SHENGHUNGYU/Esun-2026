@@ -1,0 +1,609 @@
+[
+  {
+    "raw_file": "twse-stop.json",
+    "endpoint": "https://www.twse.com.tw/rwd/zh/violation/stop",
+    "method": "GET",
+    "request_url": "https://www.twse.com.tw/rwd/zh/violation/stop?response=json",
+    "parameters": null,
+    "stat": "ok",
+    "tables": [
+      {
+        "fields": [
+          "證券代號",
+          "證券名稱",
+          "違反營業細則條款",
+          "停止買賣原因",
+          "停止買賣開始日期"
+        ],
+        "rows": 1,
+        "totalCount": null
+      },
+      {
+        "fields": null,
+        "rows": null,
+        "totalCount": null
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:38:39.821881+00:00"
+  },
+  {
+    "raw_file": "twse-delisted.json",
+    "endpoint": "https://www.twse.com.tw/rwd/zh/company/suspendListing",
+    "method": "GET",
+    "request_url": "https://www.twse.com.tw/rwd/zh/company/suspendListing?response=json&date=20260101",
+    "parameters": null,
+    "stat": null,
+    "tables": [
+      {
+        "fields": [
+          "終止上市日期",
+          "公司名稱",
+          "上市編號"
+        ],
+        "rows": 4,
+        "totalCount": null
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:38:40.295121+00:00"
+  },
+  {
+    "raw_file": "twse-reduction.json",
+    "endpoint": "https://www.twse.com.tw/rwd/zh/reducation/TWTAVU",
+    "method": "GET",
+    "request_url": "https://www.twse.com.tw/rwd/zh/reducation/TWTAVU?response=json",
+    "parameters": null,
+    "stat": "OK",
+    "tables": [
+      {
+        "fields": [
+          "停止買賣日期",
+          "股票代號",
+          "名稱",
+          "恢復買賣日期",
+          "減資換股率",
+          "減資原因",
+          "每股退還股款(元)",
+          "減資後現金增資配股率",
+          "現金增資認購價(元)",
+          "詳細資料",
+          "恢復買賣參考價",
+          "參考價試算"
+        ],
+        "rows": 2,
+        "totalCount": null
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:38:41.070213+00:00"
+  },
+  {
+    "raw_file": "twse-reduction-price.json",
+    "endpoint": "https://www.twse.com.tw/rwd/zh/reducation/TWTAUU",
+    "method": "GET",
+    "request_url": "https://www.twse.com.tw/rwd/zh/reducation/TWTAUU?response=json",
+    "parameters": null,
+    "stat": "OK",
+    "tables": [
+      {
+        "fields": [
+          "恢復買賣日期",
+          "股票代號",
+          "名稱",
+          "停止買賣前收盤價格",
+          "恢復買賣參考價",
+          "漲停價格",
+          "跌停價格",
+          "開盤競價基準",
+          "除權參考價",
+          "減資原因",
+          "詳細資料"
+        ],
+        "rows": 2,
+        "totalCount": null
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:38:45.780487+00:00"
+  },
+  {
+    "raw_file": "twse-face-change.json",
+    "endpoint": "https://www.twse.com.tw/rwd/zh/change/TWTB7U",
+    "method": "GET",
+    "request_url": "https://www.twse.com.tw/rwd/zh/change/TWTB7U?response=json",
+    "parameters": null,
+    "stat": "OK",
+    "tables": [
+      {
+        "fields": [
+          "停止買賣日期",
+          "股票代號",
+          "名稱",
+          "恢復買賣日期",
+          "變更股票面額換股率",
+          "變更前面額",
+          "變更後面額",
+          "詳細資料",
+          "恢復買賣參考價",
+          "參考價試算"
+        ],
+        "rows": 1,
+        "totalCount": null
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:38:46.539635+00:00"
+  },
+  {
+    "raw_file": "twse-face-price.json",
+    "endpoint": "https://www.twse.com.tw/rwd/zh/change/TWTB8U",
+    "method": "GET",
+    "request_url": "https://www.twse.com.tw/rwd/zh/change/TWTB8U?response=json",
+    "parameters": null,
+    "stat": "OK",
+    "tables": [
+      {
+        "fields": [
+          "恢復買賣日期",
+          "股票代號",
+          "名稱",
+          "停止買賣前收盤價格",
+          "恢復買賣參考價",
+          "漲停價格",
+          "跌停價格",
+          "開盤競價基準",
+          "詳細資料"
+        ],
+        "rows": 1,
+        "totalCount": null
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:38:46.837526+00:00"
+  },
+  {
+    "raw_file": "tpex-delisted.json",
+    "endpoint": "https://www.tpex.org.tw/www/zh-tw/company/deListed",
+    "method": "POST",
+    "request_url": "https://www.tpex.org.tw/www/zh-tw/company/deListed",
+    "parameters": {
+      "code": "",
+      "date": "",
+      "reason": "-1",
+      "response": "json",
+      "paging-offset": 0,
+      "paging-size": 10
+    },
+    "stat": "ok",
+    "tables": [
+      {
+        "fields": [
+          "股票代號",
+          "公司名稱",
+          "終止上櫃日期",
+          "終止上櫃原因",
+          "公司資料網址"
+        ],
+        "rows": 7,
+        "totalCount": 7
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:39:16.385365+00:00"
+  },
+  {
+    "raw_file": "twse-reduction-price-2026.json",
+    "endpoint": "https://www.twse.com.tw/rwd/zh/reducation/TWTAUU",
+    "method": "GET",
+    "request_url": "https://www.twse.com.tw/rwd/zh/reducation/TWTAUU?startDate=20260101&endDate=20261231&response=json",
+    "parameters": null,
+    "stat": "OK",
+    "tables": [
+      {
+        "fields": [
+          "恢復買賣日期",
+          "股票代號",
+          "名稱",
+          "停止買賣前收盤價格",
+          "恢復買賣參考價",
+          "漲停價格",
+          "跌停價格",
+          "開盤競價基準",
+          "除權參考價",
+          "減資原因",
+          "詳細資料"
+        ],
+        "rows": 17,
+        "totalCount": null
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:39:17.141606+00:00"
+  },
+  {
+    "raw_file": "twse-face-price-2026.json",
+    "endpoint": "https://www.twse.com.tw/rwd/zh/change/TWTB8U",
+    "method": "GET",
+    "request_url": "https://www.twse.com.tw/rwd/zh/change/TWTB8U?startDate=20260101&endDate=20261231&response=json",
+    "parameters": null,
+    "stat": "OK",
+    "tables": [
+      {
+        "fields": [
+          "恢復買賣日期",
+          "股票代號",
+          "名稱",
+          "停止買賣前收盤價格",
+          "恢復買賣參考價",
+          "漲停價格",
+          "跌停價格",
+          "開盤競價基準",
+          "詳細資料"
+        ],
+        "rows": 2,
+        "totalCount": null
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:39:17.428514+00:00"
+  },
+  {
+    "raw_file": "tpex-reduction.json",
+    "endpoint": "https://www.tpex.org.tw/www/zh-tw/bulletin/decap",
+    "method": "POST",
+    "request_url": "https://www.tpex.org.tw/www/zh-tw/bulletin/decap",
+    "parameters": {
+      "response": "json"
+    },
+    "stat": "ok",
+    "tables": [
+      {
+        "fields": [
+          "代號",
+          "名稱",
+          "停止買賣日期",
+          "減資換股率",
+          "每股退還股款(元)",
+          "減資原因",
+          "恢復買賣日期",
+          "減資後現金增資配股率",
+          "現金增資認購價(元)",
+          "恢復買賣參考價"
+        ],
+        "rows": 4,
+        "totalCount": 4
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:40:06.929315+00:00"
+  },
+  {
+    "raw_file": "tpex-change.json",
+    "endpoint": "https://www.tpex.org.tw/www/zh-tw/bulletin/pvChgAnn",
+    "method": "POST",
+    "request_url": "https://www.tpex.org.tw/www/zh-tw/bulletin/pvChgAnn",
+    "parameters": {
+      "response": "json"
+    },
+    "stat": "ok",
+    "tables": [
+      {
+        "fields": [
+          "證券代號",
+          "證券名稱",
+          "停止買賣日期",
+          "變更股票面額換股率",
+          "變更前股票面額",
+          "變更後股票面額",
+          "恢復買賣日期",
+          "恢復買賣參考價"
+        ],
+        "rows": 0,
+        "totalCount": 0
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:40:07.184606+00:00"
+  },
+  {
+    "raw_file": "tpex-reduction-reference.json",
+    "endpoint": "https://www.tpex.org.tw/www/zh-tw/bulletin/revivt",
+    "method": "POST",
+    "request_url": "https://www.tpex.org.tw/www/zh-tw/bulletin/revivt",
+    "parameters": {
+      "startDate": "2026/01/01",
+      "endDate": "2026/10/26",
+      "response": "json"
+    },
+    "stat": "ok",
+    "tables": [
+      {
+        "fields": [
+          "恢復買賣日期",
+          "股票代號",
+          "名稱",
+          "最後交易日之收盤價格",
+          "減資恢復買賣開始日參考價格",
+          "漲停價格",
+          "跌停價格",
+          "開始交易基準價",
+          "除權參考價",
+          "減資原因",
+          "詳細資料"
+        ],
+        "rows": 19,
+        "totalCount": 19
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:40:44.489221+00:00"
+  },
+  {
+    "raw_file": "tpex-change-reference.json",
+    "endpoint": "https://www.tpex.org.tw/www/zh-tw/bulletin/pvChgRslt",
+    "method": "POST",
+    "request_url": "https://www.tpex.org.tw/www/zh-tw/bulletin/pvChgRslt",
+    "parameters": {
+      "startDate": "2026/01/01",
+      "endDate": "2026/10/26",
+      "response": "json"
+    },
+    "stat": "ok",
+    "tables": [
+      {
+        "fields": [
+          "恢復買賣日期",
+          "證券代號",
+          "證券名稱",
+          "最後交易日之收盤價格",
+          "恢復買賣開始參考價",
+          "漲停價格",
+          "跌停價格",
+          "開始交易基準價",
+          "詳細資料"
+        ],
+        "rows": 5,
+        "totalCount": 5
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:40:44.621766+00:00"
+  },
+  {
+    "raw_file": "tpex-merger-applications.json",
+    "endpoint": "https://www.tpex.org.tw/www/zh-tw/announce/processStk",
+    "method": "POST",
+    "request_url": "https://www.tpex.org.tw/www/zh-tw/announce/processStk",
+    "parameters": {
+      "date": "",
+      "response": "json"
+    },
+    "stat": "ok",
+    "tables": [
+      {
+        "fields": [
+          "證券代號",
+          "公司型態",
+          "結案類型",
+          "公司名稱",
+          "承銷商",
+          "案件類別",
+          "金額(元)",
+          "幣別",
+          "發行價格(元)",
+          "收文日期",
+          "自行補正日期",
+          "停止生效日期",
+          "解除生效日期",
+          "生效日期",
+          "廢止/撤銷日期",
+          "自行撤回日期",
+          "退件日期",
+          "案件性質",
+          "備註"
+        ],
+        "rows": 34,
+        "totalCount": 34
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:40:45.788470+00:00"
+  },
+  {
+    "raw_file": "tpex-announcements.json",
+    "endpoint": "https://www.tpex.org.tw/www/zh-tw/bulletin/announcement",
+    "method": "POST",
+    "request_url": "https://www.tpex.org.tw/www/zh-tw/bulletin/announcement",
+    "parameters": {
+      "startDate": "2026/10/01",
+      "endDate": "2026/10/26",
+      "cate": "",
+      "txtKeyword": "合併",
+      "response": "json"
+    },
+    "stat": "ok",
+    "tables": [
+      {
+        "fields": [
+          "項次",
+          "資料日期",
+          "發文字號",
+          "主旨",
+          "詳細資料"
+        ],
+        "rows": 0,
+        "totalCount": 0
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:40:46.837320+00:00"
+  },
+  {
+    "raw_file": "tpex-announcements-capital.json",
+    "endpoint": "https://www.tpex.org.tw/www/zh-tw/bulletin/announcement",
+    "method": "POST",
+    "request_url": "https://www.tpex.org.tw/www/zh-tw/bulletin/announcement",
+    "parameters": {
+      "startDate": "2026/10/01",
+      "endDate": "2026/10/26",
+      "cate": "2",
+      "txtKeyword": "",
+      "response": "json"
+    },
+    "stat": "ok",
+    "tables": [
+      {
+        "fields": [
+          "項次",
+          "資料日期",
+          "發文字號",
+          "主旨",
+          "詳細資料"
+        ],
+        "rows": 6,
+        "totalCount": 6
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:41:00.137790+00:00"
+  },
+  {
+    "raw_file": "tpex-announcements-status.json",
+    "endpoint": "https://www.tpex.org.tw/www/zh-tw/bulletin/announcement",
+    "method": "POST",
+    "request_url": "https://www.tpex.org.tw/www/zh-tw/bulletin/announcement",
+    "parameters": {
+      "startDate": "2026/10/01",
+      "endDate": "2026/10/26",
+      "cate": "4",
+      "txtKeyword": "",
+      "response": "json"
+    },
+    "stat": "ok",
+    "tables": [
+      {
+        "fields": [
+          "項次",
+          "資料日期",
+          "發文字號",
+          "主旨",
+          "詳細資料"
+        ],
+        "rows": 4,
+        "totalCount": 4
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:41:01.288451+00:00"
+  },
+  {
+    "raw_file": "tpex-delisted-empty.json",
+    "endpoint": "https://www.tpex.org.tw/www/zh-tw/company/deListed",
+    "method": "POST",
+    "request_url": "https://www.tpex.org.tw/www/zh-tw/company/deListed",
+    "parameters": {
+      "code": "2330",
+      "date": "",
+      "reason": "-1",
+      "response": "json",
+      "paging-size": 10,
+      "paging-offset": 0
+    },
+    "stat": "ok",
+    "tables": [
+      {
+        "fields": [
+          "股票代號",
+          "公司名稱",
+          "終止上櫃日期",
+          "終止上櫃原因",
+          "公司資料網址"
+        ],
+        "rows": 0,
+        "totalCount": 0
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:41:01.429632+00:00"
+  },
+  {
+    "raw_file": "twse-announcements-merger.json",
+    "endpoint": "https://www.twse.com.tw/rwd/zh/announcement/announcement",
+    "method": "GET",
+    "request_url": "https://www.twse.com.tw/rwd/zh/announcement/announcement?startDate=20260101&endDate=20261026&keyword=%E5%90%88%E4%BD%B5&response=json",
+    "parameters": null,
+    "stat": "ok",
+    "tables": [
+      {
+        "fields": [
+          "項次",
+          "發文日期",
+          "發文字號",
+          "主旨",
+          "id"
+        ],
+        "rows": 2,
+        "totalCount": null
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:41:31.662946+00:00"
+  },
+  {
+    "raw_file": "tpex-capital-annDetail.json",
+    "endpoint": "https://www.tpex.org.tw/www/zh-tw/bulletin/annDetail",
+    "method": "POST",
+    "request_url": "https://www.tpex.org.tw/www/zh-tw/bulletin/annDetail",
+    "parameters": {
+      "content_file": "MTE1MDAwNjQwMTEuaHRtbA==",
+      "docId": "MTE1MDAwNjQwMTE="
+    },
+    "stat": "ok",
+    "tables": [
+      {
+        "fields": null,
+        "rows": null,
+        "totalCount": null
+      }
+    ],
+    "detail_fields": [
+      "downHtml",
+      "date",
+      "number",
+      "subject",
+      "depend",
+      "content",
+      "notes",
+      "files"
+    ],
+    "fetched_at": "2026-10-25T20:41:31.969899+00:00"
+  },
+  {
+    "raw_file": "twse-face-price-empty.json",
+    "endpoint": "https://www.twse.com.tw/rwd/zh/change/TWTB8U",
+    "method": "GET",
+    "request_url": "https://www.twse.com.tw/rwd/zh/change/TWTB8U?startDate=20261025&endDate=20261025&response=json",
+    "parameters": null,
+    "stat": "OK",
+    "tables": [
+      {
+        "fields": [
+          "恢復買賣日期",
+          "股票代號",
+          "名稱",
+          "停止買賣前收盤價格",
+          "恢復買賣參考價",
+          "漲停價格",
+          "跌停價格",
+          "開盤競價基準",
+          "詳細資料"
+        ],
+        "rows": 0,
+        "totalCount": null
+      }
+    ],
+    "detail_fields": null,
+    "fetched_at": "2026-10-25T20:42:02.656944+00:00"
+  }
+]

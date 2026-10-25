@@ -44,6 +44,16 @@ LLM經本機 Ollama／SSH 通道使用，請勿把本機工作台或模型通道
 
 官方結算`outcome=unknown`時顯示`WAIT_OFFICIAL_OUTCOME`，即使股數暫時相同也不視為已完成對帳。
 
+## 持續運作監測
+
+本輪已啟動72小時目標的服務監測，進度保存在`artifacts/soak-20261026/progress.json`，每分鐘寫入一次無帳戶內容的摘要。手動啟動方式：
+
+```sh
+uv run python scripts/soak_check.py --output artifacts/soak-new --hours 72 --interval 60
+```
+
+監測只讀本機工作台與模型身分，不呼叫推論、更新資料或送出文件。斷線、工作台重啟及樣本間隔過大均重算連續健康時間；監測程序重啟也不把未觀測空檔算作通過。同一路徑以檔案鎖防止重複程序。此測試不代表完整決策流程已通過72小時壓力測試；工作台、模型通道及監測程序須持續運作。
+
 ## 交付文件
 
 `output/pdf/ETF_strategy.pdf` 為待官方繳交的ETF策略說明；`Operator_guide.pdf` 為日常操作手冊。文件與本次候選可另打包成有雜湊清單的本地交付包。這些檔案存在不等於官方已接收，請核對後台狀態。

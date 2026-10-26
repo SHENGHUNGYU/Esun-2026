@@ -42,6 +42,12 @@ def test_zero_rounded_holdings_retained_but_duplicate_identifiers_rejected():
     value['holdings'].append(value['holdings'][0])
     with pytest.raises(ValueError):Benchmark.model_validate(value)
 
+def test_unresolved_date_cannot_be_used_even_when_calendar_date_matches(tmp_path):
+    store=Store(tmp_path);value={**sample(),'valuation_date_usable':False}
+    capture=import_benchmark(store,encoded(value),RAW,['00410A'],{'official.test'})
+    report=evaluate(store,[capture['ref']],{'2330':'.2'},['00410A'],'2026-10-22',now(),D('.2'))
+    assert report['validated_count']==0 and report['problems'][0]['reason']=='benchmark_date_requires_confirmation'
+
 def test_derived_pcf_date_requires_archived_primary_prospectus(tmp_path):
     store=Store(tmp_path);value=sample();proof=b'official next-business-day timing definition'
     value.update(valuation_date_basis='official_pcf_timing_inference',prospectus_source_url='https://official.test/prospectus.pdf',prospectus_raw_sha256=digest(proof))

@@ -27,6 +27,42 @@ def test_loopback_application_imports_only_valid_pack_and_blocks_cross_origin(en
     assert client.post('/api/candidates',json={'datapack_id':'../../secrets'},headers=auth).status_code==400
 
 
+def test_history_workspace_downloads_only_verified_aggregate_and_preserves_dataset(tmp_path,monkeypatch):
+    from test_history import FixtureGateway
+    from esun_research.history import collect_history,dataset_folder
+    from esun_research.store import Store,digest
+    history=Store(tmp_path/'history-data')
+    result=collect_history(history,{'2330':{'market':'TWSE'}},'2026-09','2026-09',FixtureGateway())
+    app=create_app(tmp_path/'app',model_config=None,history_root=history.root);client=TestClient(app)
+    state=client.get('/api/history').json()
+    assert state['dataset']['fixed'] and state['progress']['strict_pit_verified'] is False
+    assert state['dataset']['start_month']=='2026-09' and '績效' in state['scope']
+    response=client.get('/api/history/files/daily-prices.parquet')
+    assert response.status_code==200 and digest(response.content)==result['parquet_sha256']
+    assert client.get('/api/history/files/request.json').status_code==404
+    auth={'x-esun-token':app.state.csrf_token}
+    monkeypatch.setattr(app.state.jobs,'start',lambda *args:{'id':'new-period'})
+    assert client.post('/api/history/collect',json={'start_month':'2026-08','end_month':'2026-09'},headers=auth).status_code==200
+    (dataset_folder(history.root,'2026-09','2026-09')/'daily-prices.parquet').write_bytes(b'tampered')
+    assert client.get('/api/history/files/daily-prices.parquet').status_code==400
+
+
+def test_history_progress_does_not_confuse_stale_file_with_live_writer(tmp_path,monkeypatch):
+    import fcntl
+    from esun_research.store import encoded
+    archive=tmp_path/'archive';(archive/'history').mkdir(parents=True)
+    (archive/'history/request.json').write_bytes(encoded({'start':'2026-04','end':'2026-09'}))
+    (archive/'history/progress.json').write_bytes(encoded({'status':'RUNNING'}))
+    app=create_app(tmp_path/'app',model_config=None,history_root=archive);client=TestClient(app)
+    assert client.get('/api/history').json()['progress']['status']=='INTERRUPTED'
+    monkeypatch.setattr(app.state.jobs,'start',lambda *a:pytest.fail('duplicate history worker started'))
+    with (archive/'execution.lock').open('a') as lock:
+        fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        state=client.get('/api/history').json();assert state['active_writer'] and state['progress']['status']=='RUNNING'
+        response=client.post('/api/history/collect',json={'start_month':'2026-04','end_month':'2026-09'},headers={'x-esun-token':app.state.csrf_token})
+        assert response.status_code==400
+
+
 def test_receipt_states_do_not_send_or_claim_orders_confirmation(environment):
     store,sources,universe,pack,policy,schema,req=environment
     result=generate_candidate(store,req,sources,universe);plan=store.json(result['plan'])['plan']

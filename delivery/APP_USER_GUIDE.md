@@ -7,7 +7,7 @@
 使用 Python 3.12 或 3.13，建議先在專案根目錄執行 `./scripts/start-agent.sh`；它會使用鎖定依賴、建立需要的本機通道並啟動工作台。也可分開執行 `uv sync` 與下列啟動命令。依 AGENTS.md 的設備與 GPU 限制，建立連到已驗證模型的本機 SSH 通道；模型設定在 `config/llm-local.json`，必須保持實際模型雜湊一致。
 
 ```sh
-uv run esun-agent --root artifacts/live-20261024 --port 8766
+uv run esun-agent --root artifacts/live-20261024 --port 8766 --history-root artifacts/history-202604-202609
 ```
 
 瀏覽器開啟 `http://127.0.0.1:8766`。要以已授權遠端下載官方公開資料，可在啟動時加 `--ssh-host`，目的地只接受 AGENTS.md 清單中的設備。設備連線資訊不隨規劃網站發布。
@@ -35,6 +35,18 @@ uv run esun-agent --root artifacts/live-20261024 --port 8766
 命令列亦可使用`uv run esun-research --root 資料目錄 collect-etfs --reference-date YYYY-MM-DD --pcf-date YYYY-MM-DD`；遠端下載加`--ssh-host`，沿用設備白名單。單次下載失敗會回報非零結束碼；日期不符則清楚標為`date_mismatch`，候選端仍會阻擋。
 
 LLM經本機 Ollama／SSH 通道使用，請勿把本機工作台或模型通道綁到外部介面。模型先後核對digest，JSON與引用須完整覆蓋輸入觀測。每批最多四個個股推論，最多一次修正；失敗時保留錯誤，不默默冒充模型成功。原始請求、回應、耗時及token記錄留在本地候選。
+
+## 研究驗證頁
+
+第五個工作區「研究驗證」與正式決策資料分開。可選1–24個已結束月份，啟動或繼續官方150檔月日行情收集；同月份成功回應共用快取，結果按範圍封存。進度顯示成功／失敗月份與日紀錄，提供報告JSON、Markdown及Parquet下載。最新2026-04至09為900／900月份、18,481筆紀錄；獨立日曆與兩市場均覆蓋124交易日。
+
+```sh
+uv run esun-research --root artifacts/history-202604-202609 collect-history --start-month 2026-04 --end-month 2026-09
+```
+
+啟動腳本可用ESUN_HISTORY_ROOT指定獨立歷史目錄。遇401／403／限流會停止該市場後續請求，稍後依來源許可再續；不換身分或代理繞過。執行中不能下載可能變動的結果，沒有活躍程序的過期進度會標中斷。
+
+今天下載的歷史資料沒有當時首次發布／修訂版本；上市與上櫃成交統計口徑不同，上櫃張數及仟元換算也不恢復原始精度。不能拿原始未還原價量宣稱營收／估值策略已完成回測。另存的output/official-price-history-202604-202609.zip包含本次原始證據、資料及逐檔雜湊清單，沒有私人帳戶。
 
 ## 恢復與備份
 

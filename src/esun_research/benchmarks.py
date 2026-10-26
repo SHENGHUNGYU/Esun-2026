@@ -34,6 +34,7 @@ class Benchmark(BaseModel):
     request: dict[str,str | None] | None = None
     raw_row_definition: str | None = None
     valuation_date_basis: Literal['explicit_source_date','official_pcf_timing_inference'] = 'explicit_source_date'
+    valuation_date_usable: bool = True
     nav_source_url: str | None = None
     nav_source_raw_sha256: str | None = Field(default=None,pattern=r'^[a-f0-9]{64}$')
     prospectus_source_url: str | None = None
@@ -96,6 +97,7 @@ def evaluate(store,refs,weights,expected_codes,valuation_date,cutoff,buffer):
             if code in seen:raise ValueError('duplicate_benchmark_snapshot')
             seen.add(code)
             if code not in expected_codes:raise ValueError('benchmark_outside_official_30')
+            if not benchmark.valuation_date_usable:raise ValueError('benchmark_date_requires_confirmation')
             if benchmark.valuation_date.isoformat()!=str(valuation_date):raise ValueError('benchmark_valuation_date_mismatch')
             if instant(wrapper['imported_at'])>instant(cutoff) or instant(benchmark.fetched_at)>instant(cutoff):raise ValueError('benchmark_after_cutoff')
             if digest(store.read(wrapper['raw_ref']))!=benchmark.raw_sha256:raise ValueError('benchmark_raw_hash_mismatch')

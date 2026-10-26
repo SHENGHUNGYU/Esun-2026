@@ -1,5 +1,6 @@
 """Loopback-only operator application; decisions run through the same audited CLI."""
 import argparse
+import fcntl
 import json
 import os
 import re
@@ -13,7 +14,7 @@ from fastapi import FastAPI,Request,UploadFile,File,Form,HTTPException
 from fastapi.responses import HTMLResponse,FileResponse,JSONResponse,Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from pydantic import BaseModel,ConfigDict
+from pydantic import BaseModel,ConfigDict,Field
 from .store import Store,encoded,digest,immutable
 from .contracts import now
 from .cli import PROJECT,candidate_sources,benchmark_settings
@@ -40,6 +41,11 @@ class ETFCollectionInput(BaseModel):
     model_config=ConfigDict(extra='forbid')
     reference_date: date
     pcf_date: date
+
+class HistoryInput(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    start_month: str=Field(pattern=r'^\d{4}-\d{2}$')
+    end_month: str=Field(pattern=r'^\d{4}-\d{2}$')
 
 class Jobs:
     def __init__(self,root):
@@ -73,8 +79,29 @@ async def limited(file,limit=25_000_000):
     if len(body)>limit:raise HTTPException(413,'檔案過大')
     return body
 
-def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',ssh_host=None):
+def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',ssh_host=None,history_root:Path|None=None):
     store=Store(root);jobs=Jobs(store.root);token=uuid.uuid4().hex
+    archive=(history_root or store.root/'historical-prices').resolve()
+    def history_writing():
+        path=archive/'execution.lock'
+        if not path.exists():return False
+        with path.open('a') as lock:
+            try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            except BlockingIOError:return True
+        return False
+    def history_dataset(start=None,end=None):
+        from .history import months,dataset_folder
+        if bool(start)!=bool(end):raise ValueError('請同時提供起訖月份')
+        if not start:
+            active=archive/'history/active-dataset.json';legacy=archive/'history/request.json'
+            if active.exists() or legacy.exists():
+                saved=json.loads((active if active.exists() else legacy).read_bytes());start,end=saved['start'],saved['end']
+            else:
+                current=date.fromisoformat(now()[:10]);total=current.year*12+current.month-2
+                end=f'{total//12:04d}-{total%12+1:02d}';first=total-5
+                start=f'{first//12:04d}-{first%12+1:02d}'
+        months(start,end)
+        return dataset_folder(archive,start,end),start,end
     app=FastAPI(title='玉山 Agent 工作台',docs_url=None,redoc_url=None,openapi_url=None)
     app.state.store=store;app.state.jobs=jobs;app.state.csrf_token=token
     app.add_middleware(TrustedHostMiddleware,allowed_hosts=['127.0.0.1','localhost','testserver'])
@@ -111,6 +138,7 @@ def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',
             capture=store.select('ETF:'+code,now());value=store.json(capture['ref'])['benchmark'] if capture.get('status')=='ok' else None
             benchmarks.append({'code':code,'status':capture['status'],'fetched_at':value['fetched_at'] if value else None,
                 'valuation_date':value['valuation_date'] if value else None,'equity_count':len(value['holdings']) if value else None,
+                'valuation_date_usable':value.get('valuation_date_usable',True) if value else None,
                 'auto_supported':any(code in group for group in SUPPORTED.values())})
         session=json.loads((PROJECT/'config/competition-session.json').read_bytes())
         return {'at':now(),'sources':sources,'source_expected':len(sources),'etf_imported':sum(b['status']=='ok' for b in benchmarks),'etf_expected':30,'benchmarks':benchmarks,
@@ -138,6 +166,31 @@ def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',
     def job_log(ident):
         if not re.fullmatch(r'[a-f0-9]{32}',ident):raise HTTPException(404)
         return FileResponse(jobs.root/ident/'log.txt',filename='job-log.txt')
+    @app.get('/api/history')
+    def history_status(start_month:str|None=None,end_month:str|None=None):
+        folder,start,end=history_dataset(start_month,end_month);progress_path=folder/'progress.json';fixed=(folder/'request.json').exists()
+        state=json.loads(progress_path.read_bytes()) if progress_path.exists() else {'status':'NOT_STARTED'}
+        writing=history_writing()
+        if state.get('status')=='RUNNING' and not writing:state={**state,'status':'INTERRUPTED'}
+        report=(folder/'report.md').read_text() if state.get('status') in {'COMPLETE','INCOMPLETE'} and (folder/'report.md').exists() else None
+        return {'dataset':{'start_month':start,'end_month':end,'fixed':fixed},'progress':state,'active_writer':writing,'report':report,
+            'files':(['report.md','report.json']+(['daily-prices.parquet'] if state.get('parquet_sha256') else [])) if report else [],
+            'scope':'官方歷史價量重建；非原始公布版本、完整還原價格或正式策略績效驗收。'}
+    @app.post('/api/history/collect')
+    def collect_historical(data:HistoryInput):
+        from .history import months
+        months(data.start_month,data.end_month)
+        if history_writing():raise ValueError('歷史資料收集已在執行，請查看進度；不啟動重複工作。')
+        return jobs.start(['--root',str(archive),'collect-history','--start-month',data.start_month,'--end-month',data.end_month],'history')
+    @app.get('/api/history/files/{name}')
+    def history_file(name,start_month:str|None=None,end_month:str|None=None):
+        if name not in {'report.md','report.json','daily-prices.parquet'}:raise HTTPException(404)
+        folder,_,_=history_dataset(start_month,end_month);progress=json.loads((folder/'progress.json').read_bytes())
+        if progress['status'] not in {'COMPLETE','INCOMPLETE'}:raise HTTPException(409,'資料仍在收集，請等待驗收檔產生。')
+        body=(folder/name).read_bytes()
+        if name=='daily-prices.parquet':
+            if not progress.get('parquet_sha256') or digest(body)!=progress['parquet_sha256']:raise ValueError('歷史資料雜湊不符，請先重新驗收。')
+        return Response(body,media_type='application/octet-stream',headers={'Content-Disposition':'attachment; filename="'+name+'"'})
     @app.post('/api/candidates')
     def generate(data:RunInput):
         if not re.fullmatch(r'[a-f0-9]{64}',data.datapack_id):raise ValueError('無效資料包識別')
@@ -207,8 +260,9 @@ def main():
     parser.add_argument('--port',type=int,default=8766)
     parser.add_argument('--llm-config',type=Path,default=PROJECT/'config/llm-local.json')
     parser.add_argument('--ssh-host',choices=sorted(__import__('esun_research.gateway',fromlist=['RemoteGateway']).RemoteGateway.ALLOWED_HOSTS))
+    parser.add_argument('--history-root',type=Path,help='歷史價量資料目錄；與決策資料分開')
     args=parser.parse_args()
     import uvicorn
-    uvicorn.run(create_app(args.root,args.llm_config,args.ssh_host),host='127.0.0.1',port=args.port,access_log=False)
+    uvicorn.run(create_app(args.root,args.llm_config,args.ssh_host,args.history_root),host='127.0.0.1',port=args.port,access_log=False)
 
 if __name__=='__main__':main()

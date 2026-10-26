@@ -1,0 +1,43 @@
+[
+  {
+    "path": "twse-2330-202609.json",
+    "url": "https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date=20260901&stockNo=2330",
+    "http_status": 200,
+    "fetched_at": "2026-10-25T17:28:50.246266+00:00",
+    "sha256": "c556fb917676d81615b5c8e133c5f36dae52fba2efcfc8b9ab196c86ef1506ec",
+    "bytes": 3048,
+    "rows": 20,
+    "fields": [
+      "日期",
+      "成交股數",
+      "成交金額",
+      "開盤價",
+      "最高價",
+      "最低價",
+      "收盤價",
+      "漲跌價差",
+      "成交筆數",
+      "註記"
+    ]
+  },
+  {
+    "path": "tpex-3105-202609.json",
+    "url": "https://www.tpex.org.tw/www/zh-tw/afterTrading/tradingStock?code=3105&date=2026/09/01&response=json",
+    "http_status": 200,
+    "fetched_at": "2026-10-25T17:28:52.232789+00:00",
+    "sha256": "273139eaf474cfd6e022ce788e72d2e5b643d18fa4dc92518e16382ecd4f6197",
+    "bytes": 2362,
+    "rows": 20,
+    "fields": [
+      "日 期",
+      "成交張數",
+      "成交仟元",
+      "開盤",
+      "最高",
+      "最低",
+      "收盤",
+      "漲跌",
+      "筆數"
+    ]
+  }
+]

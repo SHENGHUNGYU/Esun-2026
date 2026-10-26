@@ -19,4 +19,4 @@ if ! curl --fail --silent --max-time 3 http://127.0.0.1:11435/api/tags >/dev/nul
     done
     if [ "$agent_ready" != true ]; then echo '模型 SSH 通道未建立，請依 AGENTS.md 檢查連線。' >&2; exit 1; fi
 fi
-uv run --frozen esun-agent --root "${ESUN_DATA_ROOT:-artifacts/live-20261024}" --port "${ESUN_APP_PORT:-8766}" --ssh-host 120.107.172.133
+uv run --frozen esun-agent --root "${ESUN_DATA_ROOT:-artifacts/live-20261024}" --port "${ESUN_APP_PORT:-8766}" --ssh-host 120.107.172.133 --history-root "${ESUN_HISTORY_ROOT:-artifacts/history-202604-202609}"

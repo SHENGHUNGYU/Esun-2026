@@ -38,7 +38,7 @@ def benchmark_settings():
     inventory=json.loads((PROJECT/'planning/api-research/etf-source-inventory.json').read_bytes())
     hosts={urlparse(r['official_url']).hostname for r in inventory['items']}
     # Official files may be served by another documented issuer subdomain.
-    hosts.update({'www.fhtrust.com.tw','vpx.fhtrust.com.tw','www.capitalfund.com.tw','www.kgifund.com.tw','www.megafunds.com.tw','sitc.sinopac.com','websys.fsit.com.tw'})
+    hosts.update({'www.fhtrust.com.tw','vpx.fhtrust.com.tw','www.capitalfund.com.tw','www.kgifund.com.tw','www.megafunds.com.tw','sitc.sinopac.com','websys.fsit.com.tw','webapi.alliancebernstein.com'})
     return codes,hosts
 
 def main():
@@ -61,6 +61,9 @@ def main():
     issuer_collection.add_argument('--reference-date',required=True)
     issuer_collection.add_argument('--pcf-date',required=True)
     issuer_collection.add_argument('--ssh-host',choices=sorted(RemoteGateway.ALLOWED_HOSTS))
+    historical=sub.add_parser('collect-history',help='下載官方歷史價量並驗收單位／覆蓋；不宣稱歷史原始版本或策略績效')
+    historical.add_argument('--start-month',required=True)
+    historical.add_argument('--end-month',required=True)
     run=sub.add_parser('research',help='使用截止時間以前已取得的快照')
     run.add_argument('--run-id',required=True)
     run.add_argument('--as-of',required=True,help='預期行情日 YYYY-MM-DD')
@@ -101,6 +104,15 @@ def main():
                 'team_id':official.team_id,'trade_date':official.trade_date.isoformat(),
                 'sha256':digest(body),'official_server_validation':False},ensure_ascii=False))
             if gate.startswith('BLOCKED'):raise SystemExit(2)
+        elif args.command=='collect-history':
+            from .history import HistoricalGateway,collect_history
+            gateway=HistoricalGateway()
+            try:result=collect_history(store,universe,args.start_month,args.end_month,gateway,
+                progress=lambda row:print(json.dumps(row,ensure_ascii=False),flush=True))
+            finally:gateway.close()
+            print(json.dumps({'status':result['status'],'successful_months':result['successful_months'],
+                'requests':result['expected_requests'],'rows':result['normalized_rows'],'strict_pit_verified':False}))
+            if result['status']!='COMPLETE':raise SystemExit(2)
         elif args.command=='collect-etfs':
             from .issuer_holdings import collect
             codes,hosts=benchmark_settings()

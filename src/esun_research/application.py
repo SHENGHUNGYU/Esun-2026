@@ -19,7 +19,7 @@ from .store import Store,encoded,digest,immutable
 from .contracts import now
 from .cli import PROJECT,candidate_sources,benchmark_settings
 from .datapack import DataPack,load_datapack
-from .operations import candidate_bundle,ReceiptEvent,record_receipt,receipts,reconcile
+from .operations import candidate_bundle,ReceiptEvent,record_receipt,receipts,operation_status,record_reconciliation
 from .benchmarks import import_benchmark
 
 def atomic_write(path,body):
@@ -212,6 +212,16 @@ def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',
             if name in manifest['artifacts']:result[key]=json.loads((folder/name).read_bytes())
         result['report']=(folder/'report.md').read_text()
         return result
+    def strategy_document():
+        from .deliverables import strategy_pdf
+        return strategy_pdf(json.loads((PROJECT/'config/strategy-description.json').read_bytes()))
+    @app.get('/api/candidates/{run_id}/operations')
+    def operations(run_id):
+        return operation_status(store,run_id,digest(strategy_document()))
+    @app.get('/api/candidates/{run_id}/operations.json')
+    def operations_download(run_id):
+        body=encoded(operation_status(store,run_id,digest(strategy_document())))
+        return Response(body,media_type='application/json',headers={'Content-Disposition':'attachment; filename="operations-'+run_id+'.json"'})
     @app.get('/api/candidates/{run_id}/files/{name}')
     def download(run_id,name):
         folder,manifest=candidate_bundle(store,run_id)
@@ -240,17 +250,19 @@ def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',
         return {'source_id':c['source_id'],'status':c['status']}
     @app.post('/api/candidates/{run_id}/receipts')
     async def receipt(run_id,event:str=Form(...),proof:UploadFile|None=File(default=None)):
-        return record_receipt(store,run_id,ReceiptEvent.model_validate_json(event),await limited(proof) if proof else None)
+        value=ReceiptEvent.model_validate_json(event)
+        document=strategy_document() if value.stage=='strategy_submitted' else None
+        return record_receipt(store,run_id,value,await limited(proof) if proof else None,document)
+    @app.get('/api/candidates/{run_id}/receipts/{sequence}/proof')
+    def receipt_proof(run_id,sequence:int):
+        candidate_bundle(store,run_id)
+        rows=[r for r in receipts(store,run_id) if r['sequence']==sequence and r.get('proof_ref')]
+        if not rows:raise HTTPException(404,'這筆操作紀錄沒有附件')
+        return Response(store.read(rows[0]['proof_ref']),media_type='application/octet-stream',
+            headers={'Content-Disposition':'attachment; filename="receipt-'+str(sequence)+'.bin"'})
     @app.post('/api/candidates/{run_id}/reconcile')
     async def reconciliation(run_id,file:UploadFile=File(...)):
-        folder,manifest=candidate_bundle(store,run_id);req=manifest['request']
-        previous=load_datapack(store.read(req['datapack_ref']),req['team_id'],__import__('datetime').date.fromisoformat(req['trade_date']))
-        next_pack=DataPack.model_validate_json(await limited(file,2_000_000))
-        plans=[n for n in manifest['artifacts'] if n.startswith('D-Plan_')]
-        if len(plans)!=1:raise ValueError('無完整候選可供對帳')
-        result=reconcile(previous,json.loads((folder/plans[0]).read_bytes()),next_pack)
-        ref=store.put_json(result);store.capture('reconciliation:'+run_id,encoded({'result_ref':ref}))
-        return result
+        return record_reconciliation(store,run_id,await limited(file,2_000_000))
     app.mount('/static',StaticFiles(directory=Path(__file__).parent/'web'),name='static')
     return app
 

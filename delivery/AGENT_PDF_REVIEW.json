@@ -1,0 +1,15 @@
+{
+  "visual_reviewed": true,
+  "pages": 1,
+  "pdf_sha256": "e18fe279ac591f16df797fce12ea05ffb48b400becbc36b9c8530ebdd63f1f58",
+  "strategy_config_sha256": "191df07b562980eb4347f1880c71831cd24818c86616d880473be019b2f2c563",
+  "characters": {
+    "name": 7,
+    "theme": 34,
+    "philosophy": 245
+  },
+  "note": "New LLM-agent branch draft. Rendered PNG inspected for Chinese glyphs, clipping, layout and page count; not evidence of official submission.",
+  "guide_pdf_sha256": "cba4bdac4802432aa4b3b8916bbaee1992228c562ff550d23586fa73d72c54bf",
+  "guide_pages": 2,
+  "guide_visual_reviewed": true
+}

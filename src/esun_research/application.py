@@ -10,6 +10,7 @@ import threading
 import uuid
 from datetime import date
 from pathlib import Path
+from typing import Literal
 from fastapi import FastAPI,Request,UploadFile,File,Form,HTTPException
 from fastapi.responses import HTMLResponse,FileResponse,JSONResponse,Response
 from fastapi.staticfiles import StaticFiles
@@ -36,6 +37,7 @@ class RunInput(BaseModel):
     model_config=ConfigDict(extra='forbid')
     datapack_id: str
     llm: bool=True
+    decision_engine: Literal['baseline','llm_agent']='baseline'
 
 class ETFCollectionInput(BaseModel):
     model_config=ConfigDict(extra='forbid')
@@ -46,6 +48,10 @@ class HistoryInput(BaseModel):
     model_config=ConfigDict(extra='forbid')
     start_month: str=Field(pattern=r'^\d{4}-\d{2}$')
     end_month: str=Field(pattern=r'^\d{4}-\d{2}$')
+
+class ResearchInput(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    reference_date: date
 
 class Jobs:
     def __init__(self,root):
@@ -131,7 +137,7 @@ def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',
             c=store.select(source.id,now());sources.append({'id':source.id,'kind':source.kind,'status':c['status'],'fetched_at':c.get('fetched_at'),'error':c.get('error')})
         runs=[]
         for p in sorted((store.root/'candidates').glob('*/manifest.json'),key=lambda p:p.stat().st_mtime,reverse=True) if (store.root/'candidates').exists() else []:
-            m=json.loads(p.read_bytes());runs.append({'run_id':p.parent.name,'status':m['status'],'trade_date':m['request']['trade_date'],'mode':m['request']['mode'],'llm':bool(m['request'].get('llm_ref'))})
+            m=json.loads(p.read_bytes());runs.append({'run_id':p.parent.name,'status':m['status'],'trade_date':m['request']['trade_date'],'mode':m['request']['mode'],'llm':bool(m['request'].get('llm_ref')),'decision_engine':m['request'].get('decision_engine','baseline')})
         from .issuer_holdings import SUPPORTED
         benchmarks=[]
         for code in codes:
@@ -196,14 +202,30 @@ def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',
         if not re.fullmatch(r'[a-f0-9]{64}',data.datapack_id):raise ValueError('無效資料包識別')
         path=store.root/'app-inputs'/(data.datapack_id+'.json');pack=DataPack.model_validate_json(path.read_bytes())
         if pack.decision_gate().startswith('BLOCKED'):raise ValueError(pack.decision_gate())
+        if data.decision_engine=='llm_agent' and not data.llm:raise ValueError('LLM主導模式需要啟用本地模型。')
         session=json.loads((PROJECT/'config/competition-session.json').read_bytes());reference=str(pack.as_of_date) if pack.as_of_date else session['first_reference_date']
         run_id='run-'+uuid.uuid4().hex[:16]
         args=['--root',str(store.root),'generate-dplan','--run-id',run_id,'--datapack',str(path),'--team-id',pack.team_id,
             '--trade-date',str(pack.trade_date),'--reference-date',reference,'--mode','live']
+        if data.decision_engine=='llm_agent':
+            research_file=store.root/'agent-inputs'/('research-data-'+reference+'.json')
+            if not research_file.exists():raise ValueError('請先建立此行情基準日的研究因子資料，再執行LLM主導模式。')
+            args+=['--decision-engine','llm_agent','--research-data',str(research_file)]
         if data.llm:
             if not model_config or not model_config.exists():raise ValueError('尚未設定本地模型')
             args+=['--llm-config',str(model_config)]
         return jobs.start(args,'candidate',run_id)
+    @app.post('/api/research-inputs/collect')
+    def collect_research_inputs(data:ResearchInput):
+        return jobs.start(['--root',str(store.root),'collect-agent-data','--reference-date',str(data.reference_date),'--history-root',str(archive)],'agent_data')
+    @app.get('/api/research-inputs')
+    def research_inputs(reference_date:date):
+        file=store.root/'agent-inputs'/('research-data-'+str(reference_date)+'.json')
+        if not file.exists():return {'status':'NOT_STARTED','reference_date':str(reference_date)}
+        body=json.loads(file.read_bytes())
+        from collections import Counter
+        return {'status':'AVAILABLE_WITH_DISCLOSED_GAPS','reference_date':str(reference_date),'created_at':body['created_at'],
+            'feature_coverage':dict(Counter(c['feature'] for c in body['cells'])),'missing_count':len(body['missing']),'limitations':body['limitations']}
     @app.get('/api/candidates/{run_id}')
     def candidate(run_id):
         folder,manifest=candidate_bundle(store,run_id)
@@ -211,16 +233,26 @@ def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',
         for name,key in [('validation.json','validation'),('active-share.json','active_share'),('projected-account.json','projection')]:
             if name in manifest['artifacts']:result[key]=json.loads((folder/name).read_bytes())
         result['report']=(folder/'report.md').read_text()
+        if 'strategy-comparison.md' in manifest['artifacts']:result['research_comparison']=(folder/'strategy-comparison.md').read_text()
         return result
-    def strategy_document():
-        from .deliverables import strategy_pdf
-        return strategy_pdf(json.loads((PROJECT/'config/strategy-description.json').read_bytes()))
+    def strategy_document(run_id=None):
+        from .deliverables import strategy_pdf,strategy_description
+        engine=candidate_bundle(store,run_id)[1]['request'].get('decision_engine','baseline') if run_id else 'baseline'
+        return strategy_pdf(strategy_description(engine))
+    @app.get('/api/candidates/{run_id}/strategy.pdf')
+    def candidate_strategy_document(run_id):
+        return Response(strategy_document(run_id),media_type='application/pdf',headers={'Content-Disposition':'attachment; filename="ETF_strategy.pdf"'})
+    @app.get('/api/candidates/{run_id}/guide.pdf')
+    def candidate_guide_document(run_id):
+        from .deliverables import operating_guide_pdf
+        engine=candidate_bundle(store,run_id)[1]['request'].get('decision_engine','baseline')
+        return Response(operating_guide_pdf(engine),media_type='application/pdf',headers={'Content-Disposition':'attachment; filename="Operator_guide.pdf"'})
     @app.get('/api/candidates/{run_id}/operations')
     def operations(run_id):
-        return operation_status(store,run_id,digest(strategy_document()))
+        return operation_status(store,run_id,digest(strategy_document(run_id)))
     @app.get('/api/candidates/{run_id}/operations.json')
     def operations_download(run_id):
-        body=encoded(operation_status(store,run_id,digest(strategy_document())))
+        body=encoded(operation_status(store,run_id,digest(strategy_document(run_id))))
         return Response(body,media_type='application/json',headers={'Content-Disposition':'attachment; filename="operations-'+run_id+'.json"'})
     @app.get('/api/candidates/{run_id}/files/{name}')
     def download(run_id,name):
@@ -236,9 +268,10 @@ def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',
         return Response(body,media_type='application/pdf',headers={'Content-Disposition':'attachment; filename="'+name+'"'})
     @app.get('/api/candidates/{run_id}/handoff.zip')
     def handoff(run_id):
-        from .deliverables import strategy_pdf,operating_guide_pdf,handoff_zip
-        description=json.loads((PROJECT/'config/strategy-description.json').read_bytes())
-        body=handoff_zip(store,run_id,{'ETF_strategy.pdf':strategy_pdf(description),'Operator_guide.pdf':operating_guide_pdf()})
+        from .deliverables import strategy_pdf,strategy_description,operating_guide_pdf,handoff_zip
+        engine=candidate_bundle(store,run_id)[1]['request'].get('decision_engine','baseline')
+        description=strategy_description(engine)
+        body=handoff_zip(store,run_id,{'ETF_strategy.pdf':strategy_pdf(description),'Operator_guide.pdf':operating_guide_pdf(engine)})
         return Response(body,media_type='application/zip',headers={'Content-Disposition':'attachment; filename="handoff-'+run_id+'.zip"'})
     @app.post('/api/benchmarks')
     async def benchmark(file:UploadFile=File(...),raw:UploadFile=File(...),supporting:list[UploadFile]=File(default=[])):
@@ -251,7 +284,7 @@ def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',
     @app.post('/api/candidates/{run_id}/receipts')
     async def receipt(run_id,event:str=Form(...),proof:UploadFile|None=File(default=None)):
         value=ReceiptEvent.model_validate_json(event)
-        document=strategy_document() if value.stage=='strategy_submitted' else None
+        document=strategy_document(run_id) if value.stage=='strategy_submitted' else None
         return record_receipt(store,run_id,value,await limited(proof) if proof else None,document)
     @app.get('/api/candidates/{run_id}/receipts/{sequence}/proof')
     def receipt_proof(run_id,sequence:int):

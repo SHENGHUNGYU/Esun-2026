@@ -1,0 +1,12 @@
+{
+  "version": "llm-research-v1",
+  "max_steps": 20,
+  "minimum_compared_strategies": 2,
+  "maximum_strategies": 6,
+  "maximum_revisions": 2,
+  "minimum_holdings": 20,
+  "maximum_holdings": 30,
+  "maximum_news_items": 16,
+  "maximum_tool_rows": 12,
+  "short_horizon_sessions": 10
+}

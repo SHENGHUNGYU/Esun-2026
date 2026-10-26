@@ -33,6 +33,9 @@ class DecisionRequest(RunRequest):
     llm_ref: str | None = None
     benchmark_universe_ref: str | None = None
     benchmark_refs: list[str] = []
+    decision_engine: Literal['baseline','llm_agent'] = 'baseline'
+    agent_settings_ref: str | None = None
+    research_data_ref: str | None = None
 
 class State(TypedDict,total=False):
     snapshot: str
@@ -45,6 +48,7 @@ class State(TypedDict,total=False):
     errors: list[str]
     status: str
     report: str
+    agent_research: str
 
 def jsonable(value):
     if isinstance(value,Decimal):return str(value)
@@ -94,6 +98,24 @@ def prepare(store,sources,universe,frozen,pack,policy):
         valuations=[r for r in by[('valuation',code)] if r['date']==req['as_of']]
         revenues=by[('revenue',code)]
         reason=None
+        if req.get('decision_engine')=='llm_agent':
+            if risk and not risk['securities'][code]['buy_allowed']:reason='trading_risk_new_buy_excluded'
+            elif decimal(quote['values']['amount'])<policy.minimum_daily_amount or decimal(quote['values']['volume'])<=0:reason='low_liquidity'
+            else:
+                v=valuations[0] if len(valuations)==1 else None
+                r=revenues[0] if len(revenues)==1 else None
+                if r:
+                    period=date.fromisoformat(r['date']);end=period.replace(day=calendar.monthrange(period.year,period.month)[1])
+                    age=(instant(req['cutoff_at']).date()-period).days
+                    if end>instant(req['cutoff_at']).date() or not 0<=age<=policy.maximum_revenue_age_days:r=None
+                pe=v['values'].get('pe') if v else None
+                industry=str(json.loads(r['raw_json']).get('產業別','')).strip() if r else ''
+                candidates.append({'code':code,'industry':industry or 'unknown','close':prices[code],
+                    'revenue_yoy_pct':r['values'].get('revenue_yoy_pct') if r else None,'pe':pe,
+                    'earnings_yield':str(1/decimal(pe)) if pe is not None and decimal(pe)>0 else None,
+                    'amount':quote['values']['amount'],'quote':quote,'valuation':v,'revenue':r})
+            if reason:exclusions.append({'code':code,'reason':reason})
+            continue
         if risk and not risk['securities'][code]['buy_allowed']:reason='trading_risk_new_buy_excluded'
         elif len(valuations)!=1 or len(revenues)!=1:reason='missing_or_conflicting_factors'
         else:
@@ -113,7 +135,7 @@ def prepare(store,sources,universe,frozen,pack,policy):
         if reason:exclusions.append({'code':code,'reason':reason})
     return {'records':records,'prices':prices,'coverage':coverage,'candidates':candidates,'exclusions':exclusions,'issues':issues,'errors':sorted(set(errors)),'trading_risk':risk}
 
-def compile_document(snapshot,ranked,targets,pack,policy,request,source_models):
+def compile_document(snapshot,ranked,targets,pack,policy,request,source_models,research=None):
     prices=snapshot['prices'];held={h.code:h.shares for h in pack.holdings if h.shares>0}
     involved=sorted(set(targets)|set(held));bycode={c['code']:c for c in ranked}
     quote_by={r['security_id']:r for r in snapshot['records'] if r['kind']=='quotes' and r['date']==request['as_of']}
@@ -122,6 +144,7 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models):
     market_index=next((r for r in reversed(index_rows) if r['date']==request['as_of']),None)
     if market_index:used.add(market_index['source_id'])
     used.update(r['source_id'] for r in snapshot['records'] if r['security_id'] in involved and r['kind'] in {'valuation','revenue'})
+    if research:used.update(r['source_id'] for r in snapshot['records'] if r['kind'] in {'rss','announcements'})
     # An aggregate of all competition-universe quotes is a market-level fact,
     # explicitly labelled as a pool proxy, never called the TAIEX index.
     sources=[];smap={};models={s.id:s for s in source_models}
@@ -135,6 +158,18 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models):
         sources.append({'source_id':index,'authority':'twse' if source.provider=='TWSE' else 'tpex',
             'url':source.url,'name':source.id+' '+source.kind,'content_as_of':period+'T13:30:00+08:00',
             'fetched_at':max(rows,key=lambda r:instant(r['fetched_at']))['fetched_at']})
+        if source.kind in {'rss','announcements'}:
+            sources[-1]['authority']='media' if source.provider=='CNA' else source.provider.lower()
+            sources[-1]['content_as_of']=max((r['published_at'] or r['available_at'] for r in rows),key=instant)
+    if research:
+        selected_codes=set(targets)|set(held)
+        evidence_ids={eid for c in ranked if c['code'] in selected_codes for ids in c.get('research_evidence',{}).values() for eid in ids}
+        for eid in sorted(evidence_ids):
+            for row in research['evidence'][eid].get('rows',[]):
+                sid=row['source_id']
+                if sid in smap:continue
+                meta=research['data_sources'][sid];smap[sid]='S'+str(len(sources)+1)
+                sources.append({'source_id':smap[sid],**meta})
     risk=snapshot.get('trading_risk')
     if risk:
         for sid,evidence in sorted(risk['feed_refs'].items()):
@@ -176,14 +211,43 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models):
                 lineage[oid]={'derivation':'deduplicated blocked securities within this cited source group; groups cannot be added',
                     'risk_feed_refs':{sid:risk['feed_refs'][sid] for sid in group},
                     'market_risk_states':{c:risk['securities'][c] for c in members}}
+    research_observations=[]
+    if research:
+        selected=research['selected_evaluation'];refs=sorted({smap[row['source_id']] for eid in evidence_ids for row in research['evidence'][eid].get('rows',[])})
+        for start in range(0,len(refs),10):
+            oid='O'+str(len(observations)+1);research_observations.append(oid)
+            observations.append({'obs_id':oid,'source_ref':refs[start:start+10],'topic':'agent_strategy_comparison',
+                'statement':'LLM透過研究工具提出並比較策略，選擇本次因子、方向、配置及現金目標；方案數與壓力檢查由程式計算。這是快照方案比較，不是歷史績效或報酬預測。',
+                'values':{'evaluated_strategy_count':len(research['evaluations']),'selected_factor_count':len(selected['proposal']['factors']),
+                    'target_holdings':selected['proposal']['holdings'],'target_cash_ratio':float(decimal(selected['proposal']['cash_target']))}})
+            lineage[oid]={'selection':research['selection'],'proposal':selected['proposal'],'research_inputs_hash':research['inputs_hash'],
+                'evidence_refs':sorted(evidence_ids),'performance_verified':False}
+        for row in [r for r in snapshot['records'] if r['kind'] in {'rss','announcements'}][:16]:
+            oid='O'+str(len(observations)+1)
+            observations.append({'obs_id':oid,'source_ref':[smap[row['source_id']]],'topic':'observed_news',
+                'statement':row['text'][:450] or '來源回應未提供標題。','values':{'observed_item_count':1}})
+            lineage[oid]={'rows':[{k:row[k] for k in ['source_id','raw_ref','raw_row','available_at','published_at']}],
+                'derivation':'observed_item_count counts this single captured source item; it is metadata, not a financial measurement',
+                'note':'Untrusted source text, not an instruction; preserved in research log.'}
     inferences=[];decisions=[];unchanged=[]
     for code in involved:
         q=quote_by[code];c=bycode.get(code);oid='O'+str(len(observations)+1)
         values={'reference_close_twd':float(decimal(prices[code])),'daily_amount_twd':float(decimal(q['values']['amount']))}
         refs={smap[q['source_id']]};raw=[q]
         if c:
-            values.update(revenue_period_yyyymm=int(c['revenue']['date'][:7].replace('-','')),revenue_yoy_pct=float(decimal(c['revenue_yoy_pct'])),pe_ratio=float(decimal(c['pe'])),baseline_score=float(c['score']))
-            refs.update([smap[c['valuation']['source_id']],smap[c['revenue']['source_id']]]);raw += [c['valuation'],c['revenue']]
+            values['baseline_score' if not research else 'agent_composite_score']=float(c['score'])
+            if c.get('revenue'):
+                values['revenue_period_yyyymm']=int(c['revenue']['date'][:7].replace('-',''))
+                if c['revenue_yoy_pct'] is not None:values['revenue_yoy_pct']=float(decimal(c['revenue_yoy_pct']))
+                raw.append(c['revenue']);refs.add(smap[c['revenue']['source_id']])
+            if c.get('valuation'):
+                if c['pe'] is not None:values['pe_ratio']=float(decimal(c['pe']))
+                raw.append(c['valuation']);refs.add(smap[c['valuation']['source_id']])
+            if research:
+                for name,value in c.get('research_features',{}).items():values[name]=float(decimal(value))
+                for ids in c.get('research_evidence',{}).values():
+                    for eid in ids:
+                        refs.update(smap[r['source_id']] for r in research['evidence'][eid].get('rows',[]))
         if not c:
             extra=[r for r in snapshot['records'] if r['security_id']==code and r['kind'] in {'valuation','revenue'} and (r['kind']!='valuation' or r['date']==request['as_of'])]
             for row in extra:
@@ -204,12 +268,17 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models):
         if risk:
             lineage[oid]['risk_evidence']=risk['securities'][code]
             lineage[oid]['risk_feed_refs']={sid:e for sid,e in risk['feed_refs'].items() if e['provider'].upper()==models[q['source_id']].provider.upper()}
+        if research:
+            lineage[oid]['score_formula']=research['selected_evaluation']['proposal']['factors']
+            lineage[oid]['feature_evidence']=c.get('research_evidence',{}) if c else {}
         iid='I'+str(len(inferences)+1)
         selected=code in targets
         logic=(f'依{policy.version}對正營收成長、正本益比與流動性作百分位加權排序，並限制產業集中及整張預算；'
                +('本檔進入分散候選，依固定等權政策換算目標部位。' if selected else '本檔未進入本次完整資料且分散限制下的候選，依規則退出可交易部位，不代表預測一定下跌。'))
+        if research:
+            logic='LLM自主研究比較後選定「'+research['selected_evaluation']['proposal']['name']+'」，以其因子、篩選與配置方案計算排名、產業分散與整張部位；'+('本檔進入該方案配置。' if selected else '本檔未進入本次選定方案，依該方案調整部位，不代表預測必然下跌。')
         risk_refs=risk_observations.get(models[q['source_id']].provider.upper(),[]) if risk else []
-        inferences.append({'inf_id':iid,'premise_refs':[oid,'O1',*risk_refs],'logic':logic,
+        inferences.append({'inf_id':iid,'premise_refs':[oid,'O1',*risk_refs,*research_observations],'logic':logic,
           'counter_evidence':'單月成長、本益比與單日流動性無法驗證完整品質或長期趨勢；未完成樣本外績效驗證。'})
         old=held.get(code,0);weight=targets.get(code,0);new=target_shares(weight,pack.account.nav_tradable,prices[code])
         if new==old:
@@ -229,6 +298,9 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models):
         'inferences':inferences,'decisions':decisions,'no_trade_decisions':unchanged,'orders':orders,
         'agent_metadata':{'model_provider':'other','model_version':policy.version+'-deterministic-no-llm',
             'run_started_at':now(),'run_completed_at':now(),'code_version':'sha256:'+digest(encoded({k:request.get(k) for k in ['code_hash','policy_ref','schema_ref','session_ref','universe_hash','registry_hash','risk_policy_ref','llm_ref','benchmark_universe_ref','benchmark_refs']}))[:48]}}
+    if research:
+        plan['market_view']['logic']='市場情境以實際可得的指數及股票池廣度作背景；LLM研究、比較後選擇本次策略，資金配置及曝險意圖由該方案與官方股數公式核對。'
+        plan['agent_metadata']['code_version']='sha256:'+digest(encoded({k:request.get(k) for k in request if k not in {'run_id'}}))[:48]
     # Funding is a numerical declaration. Only add it when omitting all sells
     # genuinely pushes cash below the declared lower bound.
     buys=[d['decision_id'] for d in decisions if d['action'] in {'BUY','ADD'}]
@@ -241,13 +313,32 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models):
 
 def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpointer,interrupt_before=None,model=None):
     req=request.model_dump(mode='json');folder=store.root/'candidates'/request.run_id
+    def research_for(state):return store.json(state['agent_research']) if state.get('agent_research') else None
+    def effective_policy(state):
+        research=research_for(state)
+        return Policy.model_validate(research['selected_evaluation']['policy']) if research and research['status']=='SELECTED' else policy
     def prepare_node(state):
         snapshot=prepare(store,sources,universe,frozen,pack,policy)
         return {'snapshot':store.put_json(snapshot),'errors':snapshot['errors']}
     def ranking_node(state):
+        if req.get('decision_engine')=='llm_agent':
+            from .strategy_agent import research_portfolio
+            from .llm import ModelConfig,OllamaModel
+            if not req.get('llm_ref') or not req.get('agent_settings_ref'):return {'errors':['agent_requires_model_and_settings']}
+            config=ModelConfig.model_validate(store.json(req['llm_ref']))
+            extra=None
+            if req.get('research_data_ref'):
+                from .agent_data import validate_bundle
+                extra=validate_bundle(store,store.json(req['research_data_ref']),req)
+            research=research_portfolio(store,folder,req,store.json(state['snapshot']),pack,policy,store.json(req['agent_settings_ref']),config,model or OllamaModel(config),extra)
+            ref=store.put_json(research)
+            if research['status']!='SELECTED':return {'agent_research':ref,'errors':research['errors']}
+            return {'agent_research':ref,'features':store.put_json(research['selected_evaluation']['ranking'])}
         snap=store.json(state['snapshot']);ranked=rank_candidates(snap['candidates'],policy)
         return {'features':store.put_json(jsonable(ranked))}
     def allocate_node(state):
+        research=research_for(state)
+        if research:return {'allocation':store.put_json(research['selected_evaluation']['targets'])}
         ranked=store.json(state['features'])
         try:targets=allocate(ranked,pack,policy)
         except ValueError as e:return {'errors':[str(e)]}
@@ -259,16 +350,30 @@ def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpoin
             ranked=store.json(state['features'])
             for c in ranked:c['score']=decimal(c['score'])
             try:
-                plan,lineage,projected=compile_document(store.json(state['snapshot']),ranked,store.json(state['allocation']),pack,policy,req,sources)
+                plan,lineage,projected=compile_document(store.json(state['snapshot']),ranked,store.json(state['allocation']),pack,effective_policy(state),req,sources,research_for(state))
                 bundle={'plan':plan,'lineage':lineage,'projected':jsonable(projected),'errors':[]}
             except (ValueError,KeyError) as e:bundle={'errors':[str(e)]}
             immutable(cached,encoded(bundle))
         return {'plan':store.put_json(bundle),'errors':bundle['errors']}
     def validate_node(state):
+        policy=effective_policy(state)
         bundle=store.json(state['plan']);plan=bundle['plan'];snap=store.json(state['snapshot'])
         expected_ranked=store.json(state['features'])
         for row in expected_ranked:row['score']=decimal(row['score'])
-        expected_plan,_,_=compile_document(snap,expected_ranked,store.json(state['allocation']),pack,policy,req,sources)
+        research=research_for(state)
+        if research:
+            from .research_tools import ResearchWorkspace,AgentSettings
+            extra=None
+            if req.get('research_data_ref'):
+                from .agent_data import validate_bundle
+                extra=validate_bundle(store,store.json(req['research_data_ref']),req)
+            base_policy=Policy.model_validate(store.json(req['policy_ref']))
+            workspace=ResearchWorkspace(snap,pack,base_policy,AgentSettings.model_validate(store.json(req['agent_settings_ref'])),extra)
+            recomputed=jsonable(workspace.evaluate(research['selected_evaluation']['proposal']))
+            if 'cost_twd' in recomputed:recomputed['cost_fraction_nav']=str(decimal(recomputed['cost_twd'])/pack.account.nav_tradable)
+            if recomputed!=research['selected_evaluation']:raise ValueError('agent_selected_evaluation_mismatch')
+            if jsonable(expected_ranked)!=recomputed['ranking'] or store.json(state['allocation'])!=recomputed['targets']:raise ValueError('agent_selection_not_applied')
+        expected_plan,_,_=compile_document(snap,expected_ranked,store.json(state['allocation']),pack,policy,req,sources,research)
         if req.get('llm_ref'):
             from .llm import apply_review
             expected_plan=apply_review(expected_plan,store.json(state['llm_review']))
@@ -315,6 +420,8 @@ def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpoin
             if cached.exists():review=json.loads(cached.read_bytes())
             else:
                 review=review_document(store,folder,bundle['plan'],config,model or OllamaModel(config))
+                if state.get('agent_research'):
+                    research=research_for(state);review['research_usage']=research['usage'];review['research_started_at']=research['started_at']
                 immutable(cached,encoded(review))
             if review['config']!=config.model_dump():raise ValueError('review_model_config_mismatch')
             bundle['plan']=apply_review(bundle['plan'],review)
@@ -331,7 +438,20 @@ def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpoin
             outputs['trading-risk-policy.json']=store.read(req['risk_policy_ref'])
         if state.get('features'):outputs['ranking.json']=store.read(state['features'])
         if state.get('allocation'):outputs['targets.json']=store.read(state['allocation'])
-        outputs['policy.json']=store.read(req['policy_ref'])
+        outputs['policy.json']=encoded(effective_policy(state).model_dump(mode='json'))
+        if state.get('agent_research'):
+            research=research_for(state);outputs['agent-research.json']=encoded(research)
+            outputs['agent-call-evidence.json']=encoded([store.json(ref) for ref in research['call_refs']])
+            lines=['# LLM自主策略比較','',f'研究狀態：{research["status"]}','', '這是資料快照、成本與情境比較；不是PIT策略績效回測。','']
+            for pid,e in research['evaluations'].items():
+                evaluation=store.json(e['ref']);p=evaluation['proposal']
+                lines += ['## '+p['name'],'',p['hypothesis'],'',f'評估參照：{e["tool_id"]}；可投資檔數：{evaluation["eligible_count"]}；本地錯誤：'+(', '.join(evaluation['errors']) or '無'),'',
+                    '因子組合：'+json.dumps(p['factors'],ensure_ascii=False),'','失效條件：'+p['failure_condition'],'']
+            if research.get('selection'):
+                lines+=['## 自主選擇','',research['selection']['reason'],'']
+                lines += ['- '+c['proposal_id']+'：'+c['reason'] for c in research['selection']['comparisons']]
+                lines+=['','## 資料及績效限制','']+['- '+x for x in research['selection']['limitations']]
+            outputs['strategy-comparison.md']=('\n'.join(lines)+'\n').encode()
         if state.get('llm_review'):
             review=store.json(state['llm_review']);outputs['llm-review.json']=encoded(review)
             outputs['llm-call-evidence.json']=encoded([store.json(ref) for ref in review['call_refs']])
@@ -343,7 +463,7 @@ def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpoin
                 outputs[name]=encoded(bundle['plan']);outputs['lineage.json']=encoded(bundle['lineage']);outputs['projected-account.json']=encoded(bundle['projected'])
         lines=['# 自主決策與 D-Plan 本地驗收','',f'狀態：{status}',f'輸入類型：{req["mode"]}；行情基準：{req["as_of"]}；截止：{req["cutoff_at"]}',
             '',f'資料品質：{sum(x["valid"] for x in store.json(state["snapshot"])["coverage"])}/{len(universe)}檔有效行情。',
-            '此版本候選尚有外部驗收阻礙，未由本程式上傳或送出；其他版本的試繳狀態另記。策略為營收成長／估值／流動性規則基線，尚無績效優勢證據。',
+            '此版本候選尚有外部驗收阻礙，未由本程式上傳或送出；其他版本的試繳狀態另記。'+('策略由LLM主導研究、比較並選擇，詳見strategy-comparison.md；尚無績效優勢證據。' if state.get('agent_research') else '策略為營收成長／估值／流動性規則基線，尚無績效優勢證據。'),
             '市場判斷引用實際可用的官方指數與固定股票池廣度，兩者分開標記。'+('本地LLM已完成逐項研究推論與反證，股數／權重／硬限制由確定性程式驗證。' if state.get('llm_review') else '本次沒有通過LLM研究驗證。'),'', '## 本地錯誤']
         lines += ['- '+e for e in errors] or ['- 無本地阻擋錯誤。']
         if risk:
@@ -369,7 +489,7 @@ def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpoin
     for name,fn in [('prepare',prepare_node),('rank',ranking_node),('allocate',allocate_node),('compile',compile_node),('llm_review',llm_node),('validate',validate_node),('publish',publish_node)]:graph.add_node(name,fn)
     graph.add_edge(START,'prepare')
     graph.add_conditional_edges('prepare',lambda s:'publish' if s['errors'] else 'rank')
-    graph.add_edge('rank','allocate')
+    graph.add_conditional_edges('rank',lambda s:'publish' if s.get('errors') else 'allocate')
     graph.add_conditional_edges('allocate',lambda s:'publish' if s['errors'] else 'compile')
     graph.add_conditional_edges('compile',lambda s:'publish' if s['errors'] else 'llm_review')
     graph.add_conditional_edges('llm_review',lambda s:'publish' if s['errors'] else 'validate')

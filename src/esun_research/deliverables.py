@@ -49,8 +49,12 @@ def strategy_pdf(description):
         ('heading','ETF 名稱'),('body',description.etf_name),('heading','ETF 投資主題'),('body',description.theme),
         ('heading','ETF 投資理念'),('body',description.philosophy)])
 
-def operating_guide_pdf():
-    return pdf([
+def strategy_description(engine='baseline'):
+    name='strategy-description-agent.json' if engine=='llm_agent' else 'strategy-description.json'
+    return json.loads((Path(__file__).resolve().parents[2]/'config'/name).read_bytes())
+
+def operating_guide_pdf(engine='baseline'):
+    body=[
         ('title','Agent 操作與繳交手冊'),
         ('body','這份手冊供參賽操作人員每日使用。工作台負責資料檢查、自主配置、本地模型推論與文件產出；正式收件結果仍以官方後台及資料包為準。'),
         ('heading','一 啟動與資料準備'),
@@ -70,7 +74,13 @@ def operating_guide_pdf():
         ('body','violations 是官方累計違規天數，notices 與 warn 提示分開。股票股數差異須檢查公司行動與官方成交結果，不能擅自把本地預估覆寫成正式庫存。中斷後先核對工作程序及封存版本，使用 resume-dplan 恢復；程式或政策已改版就建立新 run。'),
         ('heading','六 備份與尚待外部驗收'),
         ('body','備份完整 artifacts 資料目錄，包含 objects、SQLite 索引、checkpoint、候選及回執。只保留報告無法重建。金鑰與密碼不放入備份交付包、程式庫或網站。'),
-        ('body','目前已確認試繳成功，來源為使用者於 2026/10/26 的確認；尚未獨立讀取後台回執。完整 ETF 持股、官方 Active Share 日期與正規化、完整公司行動、官方費用取整、正式收件與結算及長時間穩定性仍須依最新驗收紀錄確認，不可自行勾選完成。')])
+        ('body','目前已確認試繳成功，來源為使用者於 2026/10/26 的確認；尚未獨立讀取後台回執。完整 ETF 持股、官方 Active Share 日期與正規化、完整公司行動、官方費用取整、正式收件與結算及長時間穩定性仍須依最新驗收紀錄確認，不可自行勾選完成。')]
+    if engine=='llm_agent':
+        body[0]=('title','LLM 主導研究版操作與繳交手冊')
+        body[3]=('body','以 Python 3.12 或 3.13 執行 uv sync --frozen，再以 ESUN_DATA_ROOT 指定私人資料目錄，執行 scripts/start-agent.sh。開啟 http://127.0.0.1:8766。來源與模型版本須符合 config，私人 DataPack 與快照不隨 Git 提供。')
+        body[7]=('body','先更新決策與研究消息來源，在資料與持股建立指定行情基準日的研究因子，再選 LLM 主導模式執行。模型自行查詢基本面、技術、籌碼及消息，提出至少兩個不同方案、比較修訂後自主選擇；程式核對成本、權重、整張股數與硬限制。受阻時不靜默改用基線。')
+        body[9]=('body','候選頁保留策略比較、引用、模型與工具紀錄，須閱讀本地錯誤、外部阻礙、事件、Active Share 與配置。恢復使用同一 run 的凍結輸入與 checkpoint；更改程式、模型或資料須新 run。策略 PDF 為新草案，若已繳舊版，先核對可否變更及主題一致性。')
+    return pdf(body)
 
 def create_documents(folder,description):
     folder=Path(folder);folder.mkdir(parents=True,exist_ok=True);description=StrategyDescription.model_validate(description)
@@ -83,7 +93,8 @@ def create_documents(folder,description):
 def handoff_zip(store,run_id,documents):
     folder,manifest=candidate_bundle(store,run_id);buffer=io.BytesIO()
     with zipfile.ZipFile(buffer,'w',zipfile.ZIP_DEFLATED) as archive:
-        allow=['report.md','validation.json','active-share.json','trading-risk.json','policy.json','llm-review.json']
+        allow=['report.md','validation.json','active-share.json','trading-risk.json','policy.json','llm-review.json',
+            'agent-research.json','strategy-comparison.md','agent-call-evidence.json']
         allow += [n for n in manifest['artifacts'] if n.startswith('D-Plan_')]
         contents={n:(folder/n).read_bytes() for n in allow if n in manifest['artifacts']}
         contents.update(documents)

@@ -77,6 +77,20 @@ def build():
             body=(pdf_root/name).read_bytes()
             if hashlib.sha256(body).hexdigest()!=checks['pdf_hashes'][name]:raise ValueError('Reviewed PDF changed: '+name)
             shutil.copy2(pdf_root/name,dest/'deliverables'/name)
+    agent_pdf=pdf_root/'ETF_strategy_LLM_agent.pdf'
+    if agent_pdf.exists():
+        import hashlib
+        review=json.loads((ROOT.parent/'delivery/AGENT_PDF_REVIEW.json').read_bytes())
+        if not review.get('visual_reviewed') or hashlib.sha256(agent_pdf.read_bytes()).hexdigest()!=review['pdf_sha256']:
+            raise ValueError('LLM agent strategy PDF requires current visual review')
+        if hashlib.sha256((ROOT.parent/'config/strategy-description-agent.json').read_bytes()).hexdigest()!=review['strategy_config_sha256']:
+            raise ValueError('LLM agent strategy description changed after review')
+        shutil.copy2(agent_pdf,dest/'deliverables'/agent_pdf.name)
+        agent_guide=pdf_root/'Operator_guide_LLM_agent.pdf'
+        if agent_guide.exists():
+            if not review.get('guide_visual_reviewed') or hashlib.sha256(agent_guide.read_bytes()).hexdigest()!=review.get('guide_pdf_sha256'):
+                raise ValueError('LLM agent guide requires current visual review')
+            shutil.copy2(agent_guide,dest/'deliverables'/agent_guide.name)
     node='/Users/nelson/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node'
     marked='/Users/nelson/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/marked/lib/marked.esm.js'
     documents=[]

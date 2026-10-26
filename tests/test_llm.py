@@ -98,3 +98,38 @@ def test_incomplete_or_tool_request_model_response_is_rejected(change):
         response={'model':config.model,'done':True,'done_reason':'stop','message':{'content':'{}'}};response.update(change)
         return httpx.Response(200,json=response)
     with pytest.raises(ValueError):OllamaModel(config,httpx.Client(transport=httpx.MockTransport(handler))).complete([],{'type':'object'})
+
+
+def test_bound_reference_labels_do_not_allow_prices_or_invented_citations():
+    from esun_research.llm import verify_text
+    identifiers={'O29','2609'}
+    verify_text('依據觀測 O29，個股 2609符合已選策略，但後續資料仍可能改變。',identifiers)
+    for text in ['依據觀測 O999，該股具有已驗證的研究證據。','預期報酬2609元，足以滿足本次交易目標。','個股2609保證獲利，沒有進一步風險。','觀測O29顯示明日上漲99%，可以直接投入。']:
+        with pytest.raises(ValueError):verify_text(text,identifiers)
+
+
+def test_literal_cited_values_are_allowed_but_conversions_and_forecasts_are_not():
+    from esun_research.llm import verify_text
+    identifiers={'O1'};values=[150,25,122,46041.43]
+    verify_text('觀測O1的150檔股票中，25檔上漲、122檔下跌；指數收盤46,041.43點。',identifiers,values)
+    for text in ['觀測O25顯示股票可用。','觀測O1顯示149檔股票可用。','觀測O1的指數約為46041點。','預期報酬25%，足以提高短期競賽淨值。','夏普比率25，代表方案有優勢。']:
+        with pytest.raises(ValueError):verify_text(text,identifiers,values)
+    with pytest.raises(ValueError):verify_text('占比18%與觀測一致。',(),[.18])
+
+def test_only_cited_numeric_field_names_are_identifiers():
+    from esun_research.llm import verify_text,cited_identifiers
+    plan={'observations':[{'obs_id':'O1','source_ref':['S1'],'values':{'volatility_20':.03}},
+        {'obs_id':'O2','source_ref':['S2'],'values':{'momentum_5':.1}}]}
+    identifiers=cited_identifiers(plan,['O1'])
+    verify_text('觀測O1的 volatility_20 為0.03，需留意資料限制。',identifiers,[.03])
+    for text in ['volatility_200為0.03。','momentum_5為0.03。','20日波動率為0.03。']:
+        with pytest.raises(ValueError):verify_text(text,identifiers,[.03])
+
+def test_disclaimer_sentence_does_not_turn_next_citation_into_a_forecast():
+    from esun_research.llm import verify_text
+    ids={'O1','O45','8299'};values=[1880,150,25]
+    verify_text('此為快照方案比較，非預測報酬。O45顯示8299的參考收盤價為1880。',ids,values)
+    verify_text('此為非預測報酬的質性說明。O1的股票池共有150檔。',ids,values)
+    verify_text('特定個股（如8299）僅依觀測核對，仍有風險。',ids,values)
+    for text in ['預期報酬25%，因此直接投入。','O45顯示預測漲幅25%。','個股8299的預期報酬1880元。','價格為8299元。','O999顯示8299的參考收盤價為1880。']:
+        with pytest.raises(ValueError):verify_text(text,ids,values)

@@ -112,3 +112,21 @@ def test_partial_execution_reconciles_official_shares_and_distinguishes_notices(
     assert reconcile(pack,plan,DataPack.model_validate(data))['status']=='REQUIRES_REVIEW'
     pending=next_pack.model_copy(update={'missing':['prev_settlement'],'as_of_date':None,'account':None,'holdings':None})
     assert reconcile(pack,plan,pending)['status']=='WAIT_OFFICIAL_INPUT'
+
+
+def test_agent_mode_requires_model_and_research_inputs_before_launch(environment,monkeypatch):
+    store,sources,universe,pack,policy,schema,req=environment
+    app=create_app(store.root);client=TestClient(app);auth={'x-esun-token':app.state.csrf_token}
+    loaded=client.post('/api/datapack',files={'file':('pack.json',pack.model_dump_json(),'application/json')},headers=auth).json()
+    body={'datapack_id':loaded['id'],'decision_engine':'llm_agent','llm':False}
+    assert client.post('/api/candidates',json=body,headers=auth).status_code==400
+    body['llm']=True
+    assert client.post('/api/candidates',json=body,headers=auth).status_code==400
+    assert client.get('/api/research-inputs?reference_date=2026-10-22').json()['status']=='NOT_STARTED'
+    folder=store.root/'agent-inputs';folder.mkdir();(folder/'research-data-2026-10-22.json').write_text('{}')
+    seen=[]
+    monkeypatch.setattr(app.state.jobs,'start',lambda args,kind,run_id:(seen.append(args) or {'run_id':run_id}))
+    response=client.post('/api/candidates',json=body,headers=auth)
+    assert response.status_code==200
+    assert seen[0][seen[0].index('--decision-engine')+1]=='llm_agent'
+    assert '--research-data' in seen[0] and '--llm-config' in seen[0]

@@ -1,3 +1,13 @@
+# LLM 主導研究與策略選擇 Agent
+
+目前分支為 `codex/llm-led-strategy-agent`。LLM自行決定研究工具、因子方向與權重、比較及修訂方案，再自主選擇；數值、股數與競賽限制由程式驗證。可產出D-Plan v4.3、策略比較、引用與模型／工具紀錄。已用真實官方資料及本地LLM產出25檔候選，通過官方schema與本地語意檢查，恢復不新增模型呼叫。新分支目前118項Python測試通過；下方103項為既有基線驗收紀錄。
+
+先執行 `uv sync --frozen`，再以 `ESUN_DATA_ROOT=artifacts/llm-agent-20261027 ./scripts/start-agent.sh` 啟動；開啟 `http://127.0.0.1:8766`。在資料與持股建立指定基準日的研究因子，匯入DataPack後選擇LLM主導模式。新Git複製不含私人帳戶與執行資料，資料不足時會阻擋。
+
+[架構與資料範圍](planning/31-llm-led-agent.md) · [完整操作指南](delivery/LLM_AGENT_GUIDE.md) · [驗收狀態](delivery/LLM_AGENT_READINESS.md)
+
+下面保留既有基線及維運說明；基線只作對照，不代表LLM主導模式仍採固定成長篩選。
+
 # Esun 自主研究與 D-Plan 候選 Agent
 
 目前有可操作的本機工作台，能從官方快照與 DataPack 自主產生本地 D-Plan v4.3 候選，並已接上真實本地LLM。已具備資料、規則基線、配置、股數換算、引用與驗證；尚未實作官方上傳／送出，外部合規與策略文件仍待驗收。

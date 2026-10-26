@@ -24,11 +24,12 @@ def code_hash():
     files=sorted((PROJECT/'src/esun_research').glob('*.py'))+[PROJECT/'uv.lock']
     return digest(encoded({str(p.relative_to(PROJECT)):digest(p.read_bytes()) for p in files}))
 
-def candidate_sources():
+def candidate_sources(include_research=False):
     from .risk import FEEDS
     return [Source.model_validate(s).model_copy(update={'kind':'market_index'}) if s['id']=='TWSE-067' else Source.model_validate(s)
         for s in json.loads((PROJECT/'config/sources.json').read_text())
-        if s['kind'] in {'quotes','valuation','revenue'} or s['id']=='TWSE-067' or s['id'] in FEEDS]
+        if s['kind'] in {'quotes','valuation','revenue'} or s['id']=='TWSE-067' or s['id'] in FEEDS
+        or (include_research and s['enabled'] and s['kind'] in {'rss','announcements'})]
 
 def benchmark_settings():
     from urllib.parse import urlparse
@@ -64,6 +65,9 @@ def main():
     historical=sub.add_parser('collect-history',help='下載官方歷史價量並驗收單位／覆蓋；不宣稱歷史原始版本或策略績效')
     historical.add_argument('--start-month',required=True)
     historical.add_argument('--end-month',required=True)
+    agent_data=sub.add_parser('collect-agent-data',help='收集並回源驗證LLM研究用歷史技術及逐股法人資料')
+    agent_data.add_argument('--reference-date',required=True)
+    agent_data.add_argument('--history-root',type=Path,default=PROJECT/'artifacts/history-202604-202609')
     run=sub.add_parser('research',help='使用截止時間以前已取得的快照')
     run.add_argument('--run-id',required=True)
     run.add_argument('--as-of',required=True,help='預期行情日 YYYY-MM-DD')
@@ -81,6 +85,9 @@ def main():
     decision.add_argument('--policy',type=Path,default=PROJECT/'config/baseline-policy.json')
     decision.add_argument('--risk-policy',type=Path,default=PROJECT/'config/trading-risk-policy.json')
     decision.add_argument('--llm-config',type=Path,help='本地模型設定；啟用後必須通過模型與引用驗證')
+    decision.add_argument('--decision-engine',choices=['baseline','llm_agent'],default='baseline')
+    decision.add_argument('--agent-settings',type=Path,default=PROJECT/'config/strategy-agent.json')
+    decision.add_argument('--research-data',type=Path,help='由資料工具建立並可回源驗證的研究因子bundle')
     resume=sub.add_parser('resume-dplan',help='依已封存參數恢復本地候選，不重抓資料')
     resume.add_argument('--run-id',required=True)
     args=parser.parse_args()
@@ -104,6 +111,10 @@ def main():
                 'team_id':official.team_id,'trade_date':official.trade_date.isoformat(),
                 'sha256':digest(body),'official_server_validation':False},ensure_ascii=False))
             if gate.startswith('BLOCKED'):raise SystemExit(2)
+        elif args.command=='collect-agent-data':
+            from .agent_data import collect_bundle
+            path,result=collect_bundle(store,universe,args.reference_date,args.history_root)
+            print(json.dumps({'file':str(path),'cells':len(result['cells']),'gaps':len(result['missing'])},ensure_ascii=False))
         elif args.command=='collect-history':
             from .history import HistoricalGateway,collect_history
             gateway=HistoricalGateway()
@@ -127,7 +138,6 @@ def main():
             print(json.dumps({'status':capture['status'],'source_id':capture['source_id'],'ref':capture['ref']}))
         elif args.command in {'generate-dplan','resume-dplan'}:
             from .candidate import DecisionRequest,generate_candidate
-            sources=candidate_sources()
             if args.command=='resume-dplan':
                 # Validate the run identifier before joining it into a path.
                 import re
@@ -135,11 +145,14 @@ def main():
                     raise ValueError('Invalid run identifier')
                 saved=json.loads((store.root/'candidates'/args.run_id/'request.json').read_bytes())
                 request=DecisionRequest.model_validate(saved['request'])
+                sources=candidate_sources(request.decision_engine=='llm_agent')
                 if request.code_hash!=code_hash():raise ValueError('Code changed; create a new candidate run')
             else:
                 from .portfolio import Policy
                 from .risk import RiskPolicy
                 from .llm import ModelConfig
+                sources=candidate_sources(args.decision_engine=='llm_agent')
+                if args.decision_engine=='llm_agent' and not args.llm_config:raise ValueError('LLM主導流程必須指定本地模型設定')
                 body=args.datapack.read_bytes()
                 capture=store.capture('DataPack:'+args.team_id+':'+args.trade_date,body)
                 cutoff=args.cutoff or now()
@@ -156,6 +169,9 @@ def main():
                     risk_policy_ref=store.put_json(RiskPolicy.model_validate_json(args.risk_policy.read_bytes()).model_dump(mode='json')),
                     llm_ref=store.put_json(ModelConfig.model_validate_json(args.llm_config.read_bytes()).model_dump(mode='json')) if args.llm_config else None,
                     benchmark_universe_ref=store.put_json(benchmark_codes),benchmark_refs=benchmark_refs,
+                    decision_engine=args.decision_engine,
+                    agent_settings_ref=store.put_json(__import__('esun_research.research_tools',fromlist=['AgentSettings']).AgentSettings.model_validate_json(args.agent_settings.read_bytes()).model_dump()) if args.decision_engine=='llm_agent' else None,
+                    research_data_ref=store.put_json(json.loads(args.research_data.read_bytes())) if args.research_data and args.decision_engine=='llm_agent' else None,
                     schema_ref=store.put_json(json.loads((PROJECT/'docs/official-2026-10-24/D-Plan.schema_v4.3.json').read_bytes())),
                     session_ref=store.put_json(json.loads((PROJECT/'config/competition-session.json').read_bytes())),
                     universe_hash=digest(encoded(universe)),registry_hash=digest(encoded([s.model_dump() for s in sources])),code_hash=code_hash())

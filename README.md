@@ -4,6 +4,8 @@
 
 先執行 `uv sync --frozen`，再以 `ESUN_DATA_ROOT=artifacts/llm-agent-20261027 ./scripts/start-agent.sh` 啟動；開啟 `http://127.0.0.1:8766`。在資料與持股建立指定基準日的研究因子，匯入DataPack後選擇LLM主導模式。新Git複製不含私人帳戶與執行資料，資料不足時會阻擋。
 
+之後通過本地驗證的正式資料 D-Plan 會自動集中至 `output/dplans/<交易日>/<run-id>/`，命令列及工作台皆適用。同日不同版本各自保存；測試資料與受阻版本不放入此目錄。原始執行快照仍保留於 artifacts。集中保存不代表已通過外部合規或正式送出。
+
 [架構與資料範圍](planning/31-llm-led-agent.md) · [完整操作指南](delivery/LLM_AGENT_GUIDE.md) · [驗收狀態](delivery/LLM_AGENT_READINESS.md)
 
 下面保留既有基線及維運說明；基線只作對照，不代表LLM主導模式仍採固定成長篩選。

@@ -175,3 +175,21 @@ def test_policy_changes_have_distinct_release_fingerprints(environment):
     second=generate_candidate(store,req,sources,universe)
     new=document(environment,second)['agent_metadata']['code_version']
     assert old!=new
+
+def test_live_plan_collection_is_versioned_and_excludes_fixture_and_failed_runs(environment,monkeypatch,tmp_path):
+    from esun_research import candidate
+    destination=tmp_path/'collected';monkeypatch.setattr(candidate,'DPLAN_OUTPUT',destination)
+    result=run(environment);store=environment[0];req=environment[-1]
+    assert candidate.export_dplan(store,req.run_id) is None and not destination.exists()
+    folder=store.root/'candidates'/req.run_id
+    manifest=json.loads((folder/'manifest.json').read_bytes())
+    manifest['request']['mode']='live'  # Exercise collection only; no live market claim.
+    (folder/'manifest.json').write_bytes(encoded(manifest))
+    exported=candidate.export_dplan(store,req.run_id)
+    assert exported.parent==destination/'2026-10-27'/req.run_id
+    assert exported.read_bytes()==(folder/exported.name).read_bytes()
+    assert candidate.export_dplan(store,req.run_id)==exported
+    exported.write_bytes(b'tampered')
+    with pytest.raises(ValueError,match='Immutable artifact conflict'):candidate.export_dplan(store,req.run_id)
+    manifest['status']='BLOCKED_LOCAL_CHECKS';(folder/'manifest.json').write_bytes(encoded(manifest))
+    assert candidate.export_dplan(store,req.run_id) is None

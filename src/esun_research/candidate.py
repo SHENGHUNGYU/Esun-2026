@@ -20,6 +20,8 @@ from .portfolio import Policy,decimal,rank_candidates,allocate,target_shares,com
 from .dplan import validate_plan
 from .risk import FEEDS, RiskPolicy, assess, order_errors
 
+DPLAN_OUTPUT=Path(__file__).resolve().parents[2]/'output/dplans'
+
 class DecisionRequest(RunRequest):
     team_id: str
     trade_date: date
@@ -496,6 +498,21 @@ def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpoin
     graph.add_edge('validate','publish');graph.add_edge('publish',END)
     return graph.compile(checkpointer=checkpointer,interrupt_before=interrupt_before)
 
+def export_dplan(store,run_id):
+    """Collect validated live plans without changing their frozen run artifacts."""
+    from .operations import candidate_bundle
+    folder,manifest=candidate_bundle(store,run_id)
+    if manifest['status']!='CANDIDATE_BLOCKED_EXTERNAL_CHECKS' or manifest['request']['mode']!='live':return None
+    verdict=json.loads((folder/'validation.json').read_bytes())
+    if verdict.get('errors') or not verdict.get('schema_and_semantics_pass'):raise ValueError('Cannot export an unvalidated D-Plan')
+    names=[n for n in manifest['artifacts'] if n.startswith('D-Plan_') and n.endswith('.json')]
+    if len(names)!=1 or Path(names[0]).name!=names[0]:raise ValueError('Expected one validated D-Plan')
+    trade_date=date.fromisoformat(manifest['request']['trade_date']).isoformat()
+    destination=DPLAN_OUTPUT/trade_date/run_id/names[0]
+    immutable(destination,(folder/names[0]).read_bytes())
+    return destination
+
+
 def generate_candidate(store,request,sources,universe,interrupt_before=None,model=None):
     if digest(encoded(universe))!=request.universe_hash or digest(encoded([s.model_dump() for s in sources]))!=request.registry_hash:
         raise ValueError('Universe or source registry hash mismatch')
@@ -511,5 +528,7 @@ def generate_candidate(store,request,sources,universe,interrupt_before=None,mode
             manifest=json.loads((folder/'manifest.json').read_bytes())
             for name,sha in manifest['artifacts'].items():
                 if digest((folder/name).read_bytes())!=sha:raise ValueError('Candidate artifact hash mismatch')
-            return dict(previous.values)
-        return graph.invoke(None if previous.values else {},config)
+            result=dict(previous.values)
+        else:result=graph.invoke(None if previous.values else {},config)
+        if (folder/'manifest.json').exists():export_dplan(store,request.run_id)
+        return result

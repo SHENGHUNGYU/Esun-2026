@@ -28,8 +28,8 @@ def candidate_sources(include_research=False):
     from .risk import FEEDS
     return [Source.model_validate(s).model_copy(update={'kind':'market_index'}) if s['id']=='TWSE-067' else Source.model_validate(s)
         for s in json.loads((PROJECT/'config/sources.json').read_text())
-        if s['kind'] in {'quotes','valuation','revenue'} or s['id']=='TWSE-067' or s['id'] in FEEDS
-        or (include_research and s['enabled'] and s['kind'] in {'rss','announcements'})]
+        if s['id']!='TWSE-043' and (s['kind'] in {'quotes','valuation','revenue'} or s['id']=='TWSE-067' or s['id'] in FEEDS
+        or (include_research and s['enabled'] and s['kind'] in {'rss','announcements'}))]
 
 def benchmark_settings():
     from urllib.parse import urlparse
@@ -49,6 +49,7 @@ def main():
     sub=parser.add_subparsers(dest='command',required=True)
     collection=sub.add_parser('ingest',help='抓取已啟用的官方端點與中央社 RSS')
     collection.add_argument('--ssh-host',choices=sorted(RemoteGateway.ALLOWED_HOSTS))
+    collection.add_argument('--reference-date',help='官方DataPack指定的行情基準日 YYYY-MM-DD')
     collection.add_argument('--profile',choices=['research','decision'],default='research')
     pack=sub.add_parser('check-datapack',help='本地驗證官方帳戶資料包，不產生或送出委託')
     pack.add_argument('--file',type=Path,required=True)
@@ -90,15 +91,26 @@ def main():
     decision.add_argument('--research-data',type=Path,help='由資料工具建立並可回源驗證的研究因子bundle')
     resume=sub.add_parser('resume-dplan',help='依已封存參數恢復本地候選，不重抓資料')
     resume.add_argument('--run-id',required=True)
+    daily=sub.add_parser('daily-cycle',help='依官方結算更新資料並產生下一交易日候選，不正式送出')
+    daily.add_argument('--run-id',required=True)
+    daily.add_argument('--datapack',type=Path,required=True)
+    daily.add_argument('--llm-config',type=Path,required=True)
+    daily.add_argument('--history-root',type=Path,required=True)
+    daily.add_argument('--ssh-host',choices=sorted(RemoteGateway.ALLOWED_HOSTS))
     args=parser.parse_args()
+    if args.command=='daily-cycle':
+        from .daily import run_daily
+        run_daily(args.root,args.datapack,args.run_id,args.llm_config,args.history_root,args.ssh_host)
+        return
     sources,universe=settings()
     store=Store(args.root)
     with (store.root/'execution.lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         if args.command=='ingest':
             if args.profile=='decision':sources=candidate_sources()
+            sources=[s for s in sources if s.id!='TWSE-DATED-QUOTES' or args.reference_date]
             gateway=RemoteGateway(args.ssh_host) if args.ssh_host else Gateway()
-            try:result=ingest(store,sources,gateway)
+            try:result=ingest(store,sources,gateway,{'TWSE-DATED-QUOTES':{'reference_date':args.reference_date}} if args.reference_date else None)
             finally:gateway.close()
             print(json.dumps(result,ensure_ascii=False,indent=2))
         elif args.command=='check-datapack':
@@ -162,6 +174,17 @@ def main():
                 policy=Policy.model_validate_json(args.policy.read_bytes())
                 benchmark_codes,_=benchmark_settings()
                 benchmark_refs=[c['ref'] for code in benchmark_codes if (c:=store.select('ETF:'+code,cutoff)).get('status')=='ok']
+                previous_strategy_ref=None;holding_memory_ref=None
+                if args.decision_engine=='llm_agent':
+                    from .turnover import previous_strategy
+                    from .datapack import load_datapack
+                    from datetime import date
+                    prior=previous_strategy(store,load_datapack(body,args.team_id,date.fromisoformat(args.trade_date)),cutoff)
+                    previous_strategy_ref=store.put_json(prior)
+                    from .holding_ledger import remember_pack,review_memory
+                    pack_for_memory=load_datapack(body,args.team_id,date.fromisoformat(args.trade_date))
+                    remember_pack(store,body,available['first_seen_at'])
+                    holding_memory_ref=store.put_json(review_memory(store,pack_for_memory,cutoff))
                 request=DecisionRequest(run_id=args.run_id,cutoff_at=cutoff,as_of=args.reference_date,
                     team_id=args.team_id,trade_date=args.trade_date,mode=args.mode,
                     datapack_ref=capture['ref'],datapack_seen_at=available['first_seen_at'],
@@ -171,6 +194,7 @@ def main():
                     benchmark_universe_ref=store.put_json(benchmark_codes),benchmark_refs=benchmark_refs,
                     decision_engine=args.decision_engine,
                     agent_settings_ref=store.put_json(__import__('esun_research.research_tools',fromlist=['AgentSettings']).AgentSettings.model_validate_json(args.agent_settings.read_bytes()).model_dump()) if args.decision_engine=='llm_agent' else None,
+                    previous_strategy_ref=previous_strategy_ref,holding_memory_ref=holding_memory_ref,
                     research_data_ref=store.put_json(json.loads(args.research_data.read_bytes())) if args.research_data and args.decision_engine=='llm_agent' else None,
                     schema_ref=store.put_json(json.loads((PROJECT/'docs/official-2026-10-24/D-Plan.schema_v4.3.json').read_bytes())),
                     session_ref=store.put_json(json.loads((PROJECT/'config/competition-session.json').read_bytes())),

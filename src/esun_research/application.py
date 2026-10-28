@@ -20,6 +20,7 @@ from .store import Store,encoded,digest,immutable
 from .contracts import now
 from .cli import PROJECT,candidate_sources,benchmark_settings
 from .datapack import DataPack,load_datapack
+from .daily import review_previous
 from .operations import candidate_bundle,ReceiptEvent,record_receipt,receipts,operation_status,record_reconciliation
 from .benchmarks import import_benchmark
 
@@ -69,7 +70,7 @@ class Jobs:
                     value.update(state='completed_after_restart' if manifest.exists() else 'interrupted',finished_at=now())
                     atomic_write(path,encoded(value))
             result.append(value)
-        return result
+        return sorted(result,key=lambda row:row['started_at'],reverse=True)
     def start(self,args,kind,run_id=None):
         with self.lock:
             if any(j['state'] in {'running','attention_after_restart'} for j in self.list()):raise ValueError('另一項工作仍在執行或需要確認，請先查看工作紀錄。')
@@ -87,6 +88,10 @@ async def limited(file,limit=25_000_000):
 
 def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',ssh_host=None,history_root:Path|None=None):
     store=Store(root);jobs=Jobs(store.root);token=uuid.uuid4().hex
+    from .holding_ledger import bootstrap,remember_pack,portfolio_view,import_basis
+    bootstrap(store)
+    from .model_connection import ModelConnection
+    connection=ModelConnection(model_config,ssh_host)
     archive=(history_root or store.root/'historical-prices').resolve()
     def history_writing():
         path=archive/'execution.lock'
@@ -109,7 +114,7 @@ def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',
         months(start,end)
         return dataset_folder(archive,start,end),start,end
     app=FastAPI(title='玉山 Agent 工作台',docs_url=None,redoc_url=None,openapi_url=None)
-    app.state.store=store;app.state.jobs=jobs;app.state.csrf_token=token
+    app.state.store=store;app.state.jobs=jobs;app.state.csrf_token=token;app.state.model_connection=connection
     app.add_middleware(TrustedHostMiddleware,allowed_hosts=['127.0.0.1','localhost','testserver'])
     @app.middleware('http')
     async def protect(request,call_next):
@@ -155,11 +160,59 @@ def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',
     async def upload_pack(file:UploadFile=File(...)):
         body=await limited(file,2_000_000);pack=DataPack.model_validate_json(body);key=digest(body)
         folder=store.root/'app-inputs';folder.mkdir(exist_ok=True);immutable(folder/(key+'.json'),body)
+        remember_pack(store,body)
         return {'id':key,'team_id':pack.team_id,'trade_date':str(pack.trade_date),'as_of_date':str(pack.as_of_date) if pack.as_of_date else None,
+            'previous_review':review_previous(store,pack),
             'gate':pack.decision_gate(),'holdings_count':pack.account.holdings_count if pack.account else None,'nav_tradable':str(pack.account.nav_tradable) if pack.account else None}
+    @app.get('/api/holdings')
+    def holdings_view(snapshot_id:str|None=None):
+        return portfolio_view(store,snapshot_id)
+    @app.get('/api/holdings/evidence')
+    def holdings_evidence(ref:str):
+        # Only content-addressed JSON evidence can be read; Store verifies its hash.
+        return JSONResponse(store.json(ref))
+    @app.post('/api/holdings/cost-basis')
+    async def holding_cost(snapshot_id:str=Form(...),file:UploadFile=File(...),proof:UploadFile=File(...)):
+        if not re.fullmatch(r'[a-f0-9]{64}',snapshot_id):raise ValueError('無效快照識別')
+        return import_basis(store,snapshot_id,await limited(file,200_000),await limited(proof,5_000_000))
+    @app.post('/api/daily-cycle')
+    def daily_cycle(data:RunInput):
+        if not re.fullmatch(r'[a-f0-9]{64}',data.datapack_id):raise ValueError('無效資料包識別')
+        path=store.root/'app-inputs'/(data.datapack_id+'.json')
+        pack=DataPack.model_validate_json(path.read_bytes())
+        if pack.decision_gate().startswith('BLOCKED'):raise ValueError(pack.decision_gate())
+        if not data.llm or data.decision_engine!='llm_agent':raise ValueError('每日整合流程必須使用 LLM 主導模式。')
+        if not model_config or not model_config.exists():raise ValueError('尚未設定本地模型')
+        connection.ensure()
+        run_id='daily-'+str(pack.trade_date)+'-'+uuid.uuid4().hex[:12]
+        args=['--root',str(store.root),'daily-cycle','--run-id',run_id,'--datapack',str(path),
+            '--llm-config',str(model_config),'--history-root',str(archive)]
+        if ssh_host:args+=['--ssh-host',ssh_host]
+        return jobs.start(args,'daily_cycle',run_id)
+    @app.post('/api/daily-cycle/{run_id}/resume')
+    def resume_daily(run_id):
+        if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,79}',run_id):raise ValueError('invalid_run_id')
+        folder=store.root/'daily-runs'/run_id
+        saved=json.loads((folder/'request.json').read_bytes())
+        if not model_config or not model_config.exists():raise ValueError('尚未設定本地模型')
+        from .cli import code_hash
+        if saved['code_hash']!=code_hash() or saved['model_config_sha256']!=digest(model_config.read_bytes()):
+            raise ValueError('程式或模型設定已變更，請上傳資料包建立新流程。')
+        connection.ensure()
+        args=['--root',str(store.root),'daily-cycle','--run-id',run_id,'--datapack',str(folder/'datapack.json'),
+            '--llm-config',str(model_config),'--history-root',saved['history_root']]
+        if saved['ssh_host']:args+=['--ssh-host',saved['ssh_host']]
+        return jobs.start(args,'daily_cycle',run_id)
+    @app.get('/api/daily-cycle/{run_id}')
+    def daily_progress(run_id):
+        if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,79}',run_id):raise ValueError('invalid_run_id')
+        folder=store.root/'daily-runs'/run_id
+        return {name:json.loads((folder/(name+'.json')).read_bytes()) if (folder/(name+'.json')).exists() else None
+            for name in ['progress','review']}
     @app.post('/api/collect')
-    def collect():
+    def collect(reference_date:date|None=None):
         args=['--root',str(store.root),'ingest','--profile','decision']
+        if reference_date:args+=['--reference-date',str(reference_date)]
         if ssh_host:args+=['--ssh-host',ssh_host]
         return jobs.start(args,'collect')
     @app.post('/api/benchmarks/collect')

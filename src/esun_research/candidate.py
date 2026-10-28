@@ -38,6 +38,8 @@ class DecisionRequest(RunRequest):
     decision_engine: Literal['baseline','llm_agent'] = 'baseline'
     agent_settings_ref: str | None = None
     research_data_ref: str | None = None
+    previous_strategy_ref: str | None = None
+    holding_memory_ref: str | None = None
 
 class State(TypedDict,total=False):
     snapshot: str
@@ -215,7 +217,7 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models,r
                     'market_risk_states':{c:risk['securities'][c] for c in members}}
     research_observations=[]
     if research:
-        selected=research['selected_evaluation'];refs=sorted({smap[row['source_id']] for eid in evidence_ids for row in research['evidence'][eid].get('rows',[])})
+        selected=research['selected_evaluation'];refs=sorted({smap[row['source_id']] for eid in evidence_ids for row in research['evidence'][eid].get('rows',[])}) or sorted({smap[q['source_id']] for q in quote_by.values()})
         for start in range(0,len(refs),10):
             oid='O'+str(len(observations)+1);research_observations.append(oid)
             observations.append({'obs_id':oid,'source_ref':refs[start:start+10],'topic':'agent_strategy_comparison',
@@ -237,7 +239,8 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models,r
         values={'reference_close_twd':float(decimal(prices[code])),'daily_amount_twd':float(decimal(q['values']['amount']))}
         refs={smap[q['source_id']]};raw=[q]
         if c:
-            values['baseline_score' if not research else 'agent_composite_score']=float(c['score'])
+            if not research or research['selected_evaluation']['proposal'].get('factors'):
+                values['baseline_score' if not research else 'agent_composite_score']=float(c['score'])
             if c.get('revenue'):
                 values['revenue_period_yyyymm']=int(c['revenue']['date'][:7].replace('-',''))
                 if c['revenue_yoy_pct'] is not None:values['revenue_yoy_pct']=float(decimal(c['revenue_yoy_pct']))
@@ -258,7 +261,8 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models,r
                 refs.add(smap[row['source_id']]);raw.append(row)
         statement=f'{code} 的參考收盤價、當日成交金額'
         statement+='及可取得的營收／估值欄位見數值欄。'
-        if c:statement+='規則百分位加權分數為確定性計算，不是預測報酬。'
+        if c:
+            statement+=('本方案為原股數續抱或必要風險修正，未以新的因子分數要求交易。' if research and not research['selected_evaluation']['proposal'].get('factors') else '規則百分位加權分數為確定性計算，不是預測報酬。')
         else:
             reason=next((e['reason'] for e in snapshot['exclusions'] if e['code']==code),'not_eligible')
             statement+='候選資料／條件檢查：'+reason+'。'
@@ -279,12 +283,15 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models,r
                +('本檔進入分散候選，依固定等權政策換算目標部位。' if selected else '本檔未進入本次完整資料且分散限制下的候選，依規則退出可交易部位，不代表預測一定下跌。'))
         if research:
             logic='LLM自主研究比較後選定「'+research['selected_evaluation']['proposal']['name']+'」，以其因子、篩選與配置方案計算排名、產業分散與整張部位；'+('本檔進入該方案配置。' if selected else '本檔未進入本次選定方案，依該方案調整部位，不代表預測必然下跌。')
+        if research and research['selected_evaluation'].get('continuity'):
+            reason=research['selected_evaluation']['continuity']['trade_reasons'].get(code,'未通過交易必要性檢查，保留原股數。')
+            logic=(('本次選擇續抱或必要風險修正方案。 '+reason) if not research['selected_evaluation']['proposal'].get('factors') else logic+' '+reason)
         risk_refs=risk_observations.get(models[q['source_id']].provider.upper(),[]) if risk else []
         inferences.append({'inf_id':iid,'premise_refs':[oid,'O1',*risk_refs,*research_observations],'logic':logic,
           'counter_evidence':'單月成長、本益比與單日流動性無法驗證完整品質或長期趨勢；未完成樣本外績效驗證。'})
         old=held.get(code,0);weight=targets.get(code,0);new=target_shares(weight,pack.account.nav_tradable,prices[code])
         if new==old:
-            unchanged.append({'ticker':code,'reason_refs':[iid],'reason':'公式換算後股數與官方庫存相同，保留可交易部位。'})
+            unchanged.append({'ticker':code,'reason_refs':[iid],'reason':research['selected_evaluation'].get('continuity',{}).get('trade_reasons',{}).get(code,'公式換算後股數與官方庫存相同，保留可交易部位。') if research else '公式換算後股數與官方庫存相同，保留可交易部位。'})
         else:
             action='BUY' if old==0 else 'SELL_ALL' if new==0 else 'ADD' if new>old else 'TRIM'
             decisions.append({'decision_id':'D'+str(len(decisions)+1),'ticker':code,'action':action,
@@ -443,16 +450,23 @@ def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpoin
         outputs['policy.json']=encoded(effective_policy(state).model_dump(mode='json'))
         if state.get('agent_research'):
             research=research_for(state);outputs['agent-research.json']=encoded(research)
+            if req.get('holding_memory_ref'):outputs['holding-memory.json']=store.read(req['holding_memory_ref'])
+            if research.get('selection'):
+                from .holding_ledger import daily_hypotheses
+                outputs['holding-review.json']=encoded(daily_hypotheses(research,pack,req))
             outputs['agent-call-evidence.json']=encoded([store.json(ref) for ref in research['call_refs']])
             lines=['# LLM自主策略比較','',f'研究狀態：{research["status"]}','', '這是資料快照、成本與情境比較；不是PIT策略績效回測。','']
             for pid,e in research['evaluations'].items():
                 evaluation=store.json(e['ref']);p=evaluation['proposal']
                 lines += ['## '+p['name'],'',p['hypothesis'],'',f'評估參照：{e["tool_id"]}；可投資檔數：{evaluation["eligible_count"]}；本地錯誤：'+(', '.join(evaluation['errors']) or '無'),'',
-                    '因子組合：'+json.dumps(p['factors'],ensure_ascii=False),'','失效條件：'+p['failure_condition'],'']
+                    '因子組合：'+json.dumps(p['factors'],ensure_ascii=False),'',
+                    '委託筆數：'+str(len(evaluation.get('orders',[])))+'；費稅：'+str(evaluation.get('cost_twd','未通過'))+'；買賣合計／NAV：'+str(evaluation.get('turnover_notional_fraction','未通過')),'',
+                    '失效條件：'+p['failure_condition'],'']
             if research.get('selection'):
-                lines+=['## 自主選擇','',research['selection']['reason'],'']
+                lines+=['## 自主選擇','',research['selection']['reason'],'','交易必要性：'+(research['selection'].get('trade_justification') or '本次無交易，或為首日建立部位。'),'']
                 lines += ['- '+c['proposal_id']+'：'+c['reason'] for c in research['selection']['comparisons']]
                 lines+=['','## 資料及績效限制','']+['- '+x for x in research['selection']['limitations']]
+            outputs['turnover-review.json']=encoded({'selection':research.get('selection'),'comparisons':{pid:{k:store.json(e['ref']).get(k) for k in ['proposal','errors','orders','cost_twd','turnover_notional_fraction','continuity']} for pid,e in research['evaluations'].items()},'note':'Internal controls, not backtested return guarantees.'})
             outputs['strategy-comparison.md']=('\n'.join(lines)+'\n').encode()
         if state.get('llm_review'):
             review=store.json(state['llm_review']);outputs['llm-review.json']=encoded(review)

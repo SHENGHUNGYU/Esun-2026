@@ -137,7 +137,9 @@ def test_cli_decision_profile_has_all_risk_feeds():
     from esun_research.cli import candidate_sources,settings
     decision=candidate_sources();research,_=settings()
     assert len(decision)==25 and set(FEEDS)<={s.id for s in decision}
-    assert len(research)==15
+    assert len(research)==16
+    assert 'TWSE-DATED-QUOTES' in {s.id for s in decision}
+    assert 'TWSE-043' not in {s.id for s in decision}
 
 
 def test_real_web_action_blocks_rebased_reference_and_preserves_row_evidence(tmp_path):

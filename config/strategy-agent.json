@@ -1,5 +1,5 @@
 {
-  "version": "llm-research-v1",
+  "version": "llm-research-v2-continuity",
   "max_steps": 20,
   "minimum_compared_strategies": 2,
   "maximum_strategies": 6,
@@ -8,5 +8,12 @@
   "maximum_holdings": 30,
   "maximum_news_items": 16,
   "maximum_tool_rows": 12,
-  "short_horizon_sessions": 10
+  "short_horizon_sessions": 10,
+  "maximum_daily_turnover": "0.20",
+  "maximum_daily_cost": "0.0006",
+  "maximum_replacements": 3,
+  "retention_rank_buffer": 10,
+  "minimum_rank_score_gap": "0.15",
+  "weight_deadband": "0.003",
+  "minimum_trade_fraction": "0.003"
 }

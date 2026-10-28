@@ -119,6 +119,9 @@ class Store:
         def dates(ref):
             try:
                 rows=self.json(ref)
+                if source.id=='TWSE-DATED-QUOTES':
+                    from .dated_quotes import rows as dated_rows
+                    rows=dated_rows(self.read(ref))
                 if not isinstance(rows,list) or not rows:return set()
                 return {day(r['Date']) for r in rows}
             except (ValueError,KeyError,TypeError):return set()

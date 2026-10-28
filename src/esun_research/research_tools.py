@@ -6,7 +6,7 @@ it never reports unobserved strategy returns or fills absent factors with zero.
 from collections import defaultdict
 from decimal import Decimal,ROUND_FLOOR
 from typing import Literal
-from pydantic import BaseModel,ConfigDict,Field,model_validator
+from pydantic import BaseModel,ConfigDict,Field,model_validator,field_serializer
 from .portfolio import Policy,decimal,target_shares,compile_orders,estimate,breaches
 from .store import digest,encoded
 
@@ -24,6 +24,16 @@ class AgentSettings(Strict):
     maximum_news_items: int=Field(default=16,ge=0,le=30)
     maximum_tool_rows: int=Field(default=12,ge=1,le=20)
     short_horizon_sessions: int=Field(default=10,ge=1,le=30)
+    maximum_daily_turnover: Decimal=Field(default=Decimal('.20'),gt=0,le=2)
+    maximum_daily_cost: Decimal=Field(default=Decimal('.0006'),gt=0,le=Decimal('.02'))
+    maximum_replacements: int=Field(default=3,ge=0,le=10)
+    retention_rank_buffer: int=Field(default=10,ge=0,le=50)
+    minimum_rank_score_gap: Decimal=Field(default=Decimal('.15'),ge=0,le=1)
+    weight_deadband: Decimal=Field(default=Decimal('.003'),ge=0,le=Decimal('.10'))
+    minimum_trade_fraction: Decimal=Field(default=Decimal('.003'),ge=0,le=Decimal('.10'))
+
+    @field_serializer('maximum_daily_turnover','maximum_daily_cost','minimum_rank_score_gap','weight_deadband','minimum_trade_fraction')
+    def serialize_controls(self,value):return str(value)
 
     @model_validator(mode='after')
     def ranges(self):
@@ -46,7 +56,8 @@ class StrategyProposal(Strict):
     name: str=Field(min_length=2,max_length=70)
     hypothesis: str=Field(min_length=15,max_length=500)
     failure_condition: str=Field(min_length=10,max_length=350)
-    factors: list[Factor]=Field(min_length=1,max_length=8)
+    mode: Literal['rebalance','full_rebalance','hold','risk_repair','previous']='rebalance'
+    factors: list[Factor]=Field(min_length=0,max_length=8)
     screens: list[Screen]=Field(default_factory=list,max_length=8)
     holdings: int=Field(ge=20,le=30)
     cash_target: Decimal=Field(ge=Decimal('.05'),le=Decimal('.22'))
@@ -54,7 +65,7 @@ class StrategyProposal(Strict):
 
     @model_validator(mode='after')
     def coherent(self):
-        if sum((t.weight for t in self.factors),Decimal(0))!=1:raise ValueError('factor_weights_must_sum_to_one')
+        if self.mode not in {'hold','risk_repair'} and sum((t.weight for t in self.factors),Decimal(0))!=1:raise ValueError('factor_weights_must_sum_to_one')
         if len({(f.feature,f.direction,f.transform) for f in self.factors})!=len(self.factors):raise ValueError('duplicate_factor_terms')
         return self
 
@@ -174,7 +185,36 @@ class ResearchWorkspace:
         result={'proposal':spec.model_dump(mode='json'),'economic_hash':spec.economic_hash(),'complete_feature_count':len(rows),'eligible_count':len(ranked),
             'errors':[],'performance_verified':False,'performance_note':'Snapshot policy comparison, not a PIT backtest or return forecast.'}
         try:
-            targets=allocate_research(ranked,self.pack,policy,spec.weighting)
+            from .turnover import held_positions,weights_for_positions,continuity_positions,repair_positions,check_positions,budget_errors
+            held=held_positions(self.pack);settled=bool(held and self.pack.as_of_date)
+            reasons={};suppressed=[];repair_exception=False
+            if spec.mode=='hold':
+                if not settled:raise ValueError('hold_requires_settled_positions')
+                targets=weights_for_positions(held,self.pack,self.snapshot['prices'])
+                reasons={c:'續抱官方可交易股數；本方案不交易、不產生費稅，仍須通過當日合規與情境檢查。' for c in held}
+            elif spec.mode=='risk_repair':
+                if not settled:raise ValueError('repair_requires_settled_positions')
+                _,_,old_errors=check_positions(held,self.pack,self.snapshot,policy)
+                positions,reasons=repair_positions(self.pack,self.snapshot,policy)
+                repair_exception=bool(old_errors)
+                targets=weights_for_positions(positions,self.pack,self.snapshot['prices'])
+                for c in positions:reasons.setdefault(c,'原有部位沒有需要修正的限制，維持實際股數。')
+            else:
+                targets=allocate_research(ranked,self.pack,policy,spec.weighting)
+                if settled and spec.mode in {'rebalance','previous'}:
+                    positions,reasons,suppressed=continuity_positions(ranked,targets,self.pack,self.snapshot,policy,self.settings)
+                    targets=weights_for_positions(positions,self.pack,self.snapshot['prices'])
+                elif settled:
+                    for c in set(targets)&set(held):
+                        new=target_shares(targets[c],self.pack.account.nav_tradable,self.snapshot['prices'][c])
+                        drift=abs(Decimal(new-held[c])*decimal(self.snapshot['prices'][c])/self.pack.account.nav_tradable)
+                        if drift<=self.settings.weight_deadband or drift<self.settings.minimum_trade_fraction:
+                            targets[c]=weights_for_positions({c:held[c]},self.pack,self.snapshot['prices'])[c]
+                            suppressed.append({'code':c,'reason':'weight_deadband_or_minimum_trade'})
+                    reasons={c:'本次完整配置候選；需與不交易及沿用昨日規則比較，並通過逐筆與整體成本預算。' for c in set(targets)|set(held)}
+            result.update(continuity={'enabled':settled,'mode':spec.mode,'trade_reasons':reasons,'suppressed_adjustments':suppressed,
+                'risk_repair_budget_exception':repair_exception,'limits':self.settings.model_dump(mode='json'),
+                'note':'Internal initial controls, not validated return thresholds; factor scores are not returns.'})
             held={h.code:h.shares for h in self.pack.holdings if h.shares>0};decisions=[]
             for code in sorted(set(targets)|set(held)):
                 old=held.get(code,0);new=target_shares(targets.get(code,0),self.pack.account.nav_tradable,self.snapshot['prices'][code])
@@ -192,6 +232,14 @@ class ResearchWorkspace:
                     bad=breaches(state,policy,sectors if all(c in sectors for c in state['positions']) else None)
                     stresses.append({'execution_factor':str(execution),'close_factor':str(close),'errors':bad})
             if any(s['errors'] for s in stresses):errors.append('price_stress_failed')
+            if not policy.cash_band[0]<=projection['cash_ratio']<=policy.cash_band[1]:errors.append('cash_policy_band')
+            if settled and not repair_exception:errors+=budget_errors(orders,projection,self.pack,self.snapshot['prices'],self.settings)
+            if settled and spec.mode=='full_rebalance':
+                replacements=sum(c not in held for c in projection['positions'])
+                if replacements>self.settings.maximum_replacements:errors.append('replacement_budget_exceeded')
+            if settled:
+                for order in orders:
+                    if order['ticker'] not in reasons:errors.append('trade_necessity_reason_missing')
             result.update(targets=targets,policy=policy.model_dump(mode='json'),orders=orders,
                 holdings=len(projection['positions']),cash_ratio=str(projection['cash_ratio']),cost_twd=str(projection['fees']),
                 turnover_notional_fraction=str(sum((decimal(self.snapshot['prices'][o['ticker']])*o['shares'] for o in orders),Decimal(0))/self.pack.account.nav_tradable),

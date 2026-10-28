@@ -22,6 +22,10 @@ class Gateway:
         self.client.close()
 
     def get(self, source: Source, params=None):
+        if source.id=='TWSE-DATED-QUOTES':
+            from .dated_quotes import download
+            try:return download((params or {})['reference_date'],getattr(self,'host',None)),None
+            except (ValueError,KeyError,httpx.HTTPError,subprocess.TimeoutExpired):return None,'twse_dated_download_or_validation_failed'
         from .event_transport import REPORTS
         if source.id in REPORTS:
             from .exchange_events import download
@@ -79,6 +83,10 @@ class RemoteGateway:
         pass
 
     def get(self,source,params=None):
+        if source.id=='TWSE-DATED-QUOTES':
+            from .dated_quotes import download
+            try:return download((params or {})['reference_date'],getattr(self,'host',None)),None
+            except (ValueError,KeyError,httpx.HTTPError,subprocess.TimeoutExpired):return None,'twse_dated_download_or_validation_failed'
         from .event_transport import REPORTS
         if source.id in REPORTS:
             from .exchange_events import download

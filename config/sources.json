@@ -1869,5 +1869,15 @@
     "kind": "trading_risk",
     "enabled": false,
     "fields": []
+  },
+  {
+    "id": "TWSE-DATED-QUOTES",
+    "url": "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX",
+    "provider": "TWSE",
+    "branch": "market",
+    "kind": "quotes",
+    "enabled": true,
+    "fields": [],
+    "dataset": "dated_closing_report"
   }
 ]

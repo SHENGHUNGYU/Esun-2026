@@ -1,12 +1,12 @@
 # LLM 主導研究與策略選擇 Agent
 
-目前分支為 `codex/llm-led-strategy-agent`。LLM自行決定研究工具、因子方向與權重、比較及修訂方案，再自主選擇；數值、股數與競賽限制由程式驗證。可產出D-Plan v4.3、策略比較、引用與模型／工具紀錄。已用真實官方資料及本地LLM產出25檔候選，通過官方schema與本地語意檢查，恢復不新增模型呼叫。新分支目前118項Python測試通過；下方103項為既有基線驗收紀錄。
+LLM 主導研究功能已合併至 `main`。LLM自行決定研究工具、因子方向與權重、比較及修訂方案，再自主選擇；數值、股數與競賽限制由程式驗證。可產出D-Plan v4.3、策略比較、引用與模型／工具紀錄。已用真實官方資料及本地LLM產出25檔候選，通過官方schema與本地語意檢查，恢復不新增模型呼叫。目前141項Python測試通過；下方103項為既有基線驗收紀錄。
 
 先執行 `uv sync --frozen`，再以 `ESUN_DATA_ROOT=artifacts/llm-agent-20261027 ./scripts/start-agent.sh` 啟動；開啟 `http://127.0.0.1:8766`。在資料與持股建立指定基準日的研究因子，匯入DataPack後選擇LLM主導模式。新Git複製不含私人帳戶與執行資料，資料不足時會阻擋。
 
 之後通過本地驗證的正式資料 D-Plan 會自動集中至 `output/dplans/<交易日>/<run-id>/`，命令列及工作台皆適用。同日不同版本各自保存；測試資料與受阻版本不放入此目錄。原始執行快照仍保留於 artifacts。集中保存不代表已通過外部合規或正式送出。
 
-[架構與資料範圍](planning/31-llm-led-agent.md) · [完整操作指南](delivery/LLM_AGENT_GUIDE.md) · [驗收狀態](delivery/LLM_AGENT_READINESS.md)
+[每日整合流程](delivery/DAILY_CYCLE_GUIDE.md) · [續抱與換手控制](delivery/POSITION_CONTINUITY.md) · [架構與資料範圍](planning/31-llm-led-agent.md) · [完整操作指南](delivery/LLM_AGENT_GUIDE.md) · [驗收狀態](delivery/LLM_AGENT_READINESS.md)
 
 下面保留既有基線及維運說明；基線只作對照，不代表LLM主導模式仍採固定成長篩選。
 
@@ -58,7 +58,7 @@ uv run esun-research --root artifacts/live resume-dplan --run-id first-candidate
 
 18個官方事件來源已接入：停復牌按時間線合併，注意股票預設只註記，處置／變更交易依內部政策排除新買；跨行情基準的除權息暫停未驗證換算。未知事件阻擋相關買賣，持有且不可賣出時阻擋整份候選。政策在 config/trading-risk-policy.json，以 --risk-policy 指定並凍結到run；36小時取得時效及收件窗更新門檻不代表消息完整。詳見 [風險關卡](planning/19-trading-risk-gate.md)。
 
-外部阻礙保留：完整交易狀態／公司行動範圍、正式收件窗更新、30檔ETF Active Share、官方檢核／送出、費用取整、策略PDF及樣本外績效驗證。部分未成交模擬只揭露風險，不能保證任意多檔排除或跳空後仍合規；實際結果須依次日官方資料包對帳。每日等權再平衡可能產生換手，低換手政策仍需後續驗證。
+外部阻礙保留：完整交易狀態／公司行動範圍、正式收件窗更新、30檔ETF Active Share、官方檢核／送出、費用取整、策略PDF及樣本外績效驗證。部分未成交模擬只揭露風險，不能保證任意多檔排除或跳空後仍合規；實際結果須依次日官方資料包對帳。LLM模式已加入續抱、必要風險修正及昨日規則對照，並限制換手、成本與替換檔數；初始控制值仍需樣本外績效校準。
 
 ## 研究管線
 
@@ -83,3 +83,5 @@ D-Plan的code_version結合程式、政策、schema、競賽時程、來源設�
 研究驗證頁已接入官方月日行情收集與可恢復快取，使用獨立歷史目錄；2026-04至09完成150檔、900／900月份、18,481筆日紀錄。另以官方日曆與TAIEX核對124個交易日。這不代表已完成價格還原、營收／估值PIT或策略績效驗收。詳見[歷史資料驗收](planning/27-historical-prices.md)。
 
 工作台已提供[官方流程進度](planning/30-submission-evidence.md)：分開顯示上傳、送出、委託確認、策略PDF與結算，跨版本重送使舊確認失效，操作紀錄與原始結算資料保留完整性檢查。進度為本地證據紀錄，未代替官方驗收。
+
+持股資產頁面、成本口徑與跨日記憶：[持股假說帳本](delivery/HOLDING_LEDGER.md)。

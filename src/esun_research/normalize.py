@@ -49,6 +49,9 @@ def normalize(source, capture, body, universe, cutoff_at):
     issues=[];records=[]
     try:
         raw=rss_records(body) if source.kind=='rss' else json.loads(body)
+        if source.id=='TWSE-DATED-QUOTES':
+            from .dated_quotes import rows
+            raw=rows(body)
         if source.provider=='FinMind':raw=raw['data']
         if not isinstance(raw,list):raise ValueError('Expected array')
         if raw and source.fields and not set(source.fields)<=set(raw[0]):
@@ -71,6 +74,9 @@ def normalize(source, capture, body, universe, cutoff_at):
                   'fetched_at':capture['fetched_at'],'published_at':None,
                   'available_at':capture['first_seen_at'],'date':None,'unit':'unverified',
                   'values':{},'text':'','source_url':source.url,'raw_json':json.dumps(row,ensure_ascii=False)}
+            if source.id=='TWSE-DATED-QUOTES':
+                base['raw_table']=r['_raw_table'];base['raw_row']=r['_raw_row']
+                base['raw_json']=json.dumps(r['_raw_values'],ensure_ascii=False)
             if source.kind=='quotes':
                 keys=(['OpeningPrice','HighestPrice','LowestPrice','ClosingPrice','TradeVolume','TradeValue']
                       if source.provider=='TWSE' else ['Open','High','Low','Close','TradingShares','TransactionAmount'])

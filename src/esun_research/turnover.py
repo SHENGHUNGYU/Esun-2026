@@ -148,3 +148,47 @@ def previous_strategy(store,pack,cutoff):
     hashes={StrategyProposal.model_validate(m['proposal']).economic_hash() for m in matches}
     if len(hashes)!=1:return {'proposal':None,'reason':'missing_or_ambiguous_reconciled_previous_strategy','submission_verified':False}
     return {**matches[0],'equivalent_local_matches':[m['run_id'] for m in matches],'submission_verified':False}
+
+
+def gradual_positions(ranked,pack,snapshot,policy,settings,weighting):
+    """Redistribute existing positions only, funded by trims, never spend spare cash.
+
+The fixed basket and reference invested notional are shared by equal/rank-tilt
+experiments. Missing features freeze that name. Each name changes at most once.
+"""
+    positions=held_positions(pack);prices=snapshot['prices'];nav=pack.account.nav_tradable
+    scores={r['code']:decimal(r['score']) for r in ranked if r['code'] in positions}
+    reasons={c:'續抱原股數；沒有通過訊號差、免調整區間及交易預算的漸進調整。' for c in positions}
+    suppressed=[]
+    if not scores:return positions,reasons,[{'reason':'no_complete_held_scores'}]
+    values={c:decimal(prices[c])*positions[c] for c in scores};budget=sum(values.values(),Decimal(0))
+    raw={c:Decimal(1) if weighting=='equal' else Decimal('.5')+scores[c] for c in scores};den=sum(raw.values())
+    desired={c:budget*raw[c]/den for c in scores}
+    sellers=sorted([c for c in scores if values[c]-desired[c]>settings.weight_deadband*nav],key=lambda c:(scores[c],c))
+    buyers=sorted([c for c in scores if desired[c]-values[c]>settings.weight_deadband*nav],key=lambda c:(-scores[c],c))
+    used=set();pairs=0
+    for buy in buyers:
+        if pairs>=settings.maximum_resize_pairs:break
+        if buy in used:continue
+        for sell in sellers:
+            if sell in used or sell==buy:continue
+            if scores[buy]-scores[sell]<settings.minimum_rank_score_gap:continue
+            amount=min(values[sell]-desired[sell],desired[buy]-values[buy],settings.maximum_resize_weight*nav)
+            n=int((amount/decimal(prices[sell])/1000).to_integral_value(rounding=ROUND_FLOOR))*1000
+            n=min(n,positions[sell]-1000)
+            if n<=0:continue
+            proceeds=n*decimal(prices[sell])*(1-policy.sell_fee_tax)
+            m=int((proceeds/(decimal(prices[buy])*(1+policy.buy_fee))/1000).to_integral_value(rounding=ROUND_FLOOR))*1000
+            if m<=0 or min(n*decimal(prices[sell]),m*decimal(prices[buy]))<settings.minimum_trade_fraction*nav:continue
+            candidate=dict(positions);candidate[sell]-=n;candidate[buy]+=m
+            orders,state,errors=check_positions(candidate,pack,snapshot,policy)
+            errors+=budget_errors(orders,state,pack,prices,settings)
+            if errors:
+                suppressed.append({'code':buy,'funded_by':sell,'reason':'risk_or_budget','errors':sorted(set(errors))});continue
+            positions=candidate;used.update([sell,buy]);pairs+=1
+            reasons[sell]='同一持股籃子內，減少偏離目標的較弱訊號部位，保留持股並資助較強訊號部位；通過成本與風險門檻。'
+            reasons[buy]='同一持股籃子內，以減碼淨收入漸進提高較強訊號部位；不動用原有現金，因子分數並非預期報酬。'
+            break
+    for code in positions:
+        if code not in scores:suppressed.append({'code':code,'reason':'missing_features_hold_unchanged'})
+    return positions,reasons,suppressed

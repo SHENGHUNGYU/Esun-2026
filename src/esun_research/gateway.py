@@ -96,12 +96,22 @@ class RemoteGateway:
         if parsed.scheme!='https' or parsed.hostname not in HOSTS or parsed.query or parsed.username:
             return None,'url_not_allowed'
         command=shlex.join(['curl','--silent','--show-error','--fail','--max-time','60','--max-filesize','25000000',source.url])
-        try:
-            p=subprocess.run(['ssh','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes',
-                '-o','ConnectTimeout=8','-o','ConnectionAttempts=1','nelson@'+self.host,command],
-                capture_output=True,timeout=70)
-        except subprocess.TimeoutExpired:return None,'remote_download_timeout'
-        if p.returncode:return None,'remote_download_exit_'+str(p.returncode)
+        for attempt in range(2):
+            try:
+                p=subprocess.run(['ssh','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes',
+                    '-o','ConnectTimeout=8','-o','ConnectionAttempts=1','nelson@'+self.host,command],
+                    capture_output=True,timeout=70)
+            except subprocess.TimeoutExpired:return None,'remote_download_timeout'
+            if not p.returncode:break
+            if p.returncode==255:
+                detail=p.stderr.decode('utf-8',errors='replace').lower()
+                if any(x in detail for x in ['permission denied','host key verification failed','remote host identification has changed']):
+                    return None,'remote_ssh_auth_or_host_key_failed'
+                if attempt==0:
+                    time.sleep(2)
+                    continue
+                return None,'remote_ssh_connection_failed_after_retry'
+            return None,'remote_download_exit_'+str(p.returncode)
         if len(p.stdout)>25_000_000:return None,'response_too_large'
         # Throttle the host even when the next source uses the same endpoint domain.
         time.sleep(1)

@@ -466,6 +466,7 @@ def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpoin
                 lines+=['## 自主選擇','',research['selection']['reason'],'','交易必要性：'+(research['selection'].get('trade_justification') or '本次無交易，或為首日建立部位。'),'']
                 lines += ['- '+c['proposal_id']+'：'+c['reason'] for c in research['selection']['comparisons']]
                 lines+=['','## 資料及績效限制','']+['- '+x for x in research['selection']['limitations']]
+            outputs['selection-diagnostics.json']=encoded({pid:store.json(e['ref']).get('diagnostics') for pid,e in research['evaluations'].items()})
             outputs['turnover-review.json']=encoded({'selection':research.get('selection'),'comparisons':{pid:{k:store.json(e['ref']).get(k) for k in ['proposal','errors','orders','cost_twd','turnover_notional_fraction','continuity']} for pid,e in research['evaluations'].items()},'note':'Internal controls, not backtested return guarantees.'})
             outputs['strategy-comparison.md']=('\n'.join(lines)+'\n').encode()
         if state.get('llm_review'):

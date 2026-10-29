@@ -54,6 +54,11 @@ class ResearchInput(BaseModel):
     model_config=ConfigDict(extra='forbid')
     reference_date: date
 
+
+class StrategyAnalysisInput(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    source_run: str=Field(pattern=r'^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$')
+
 class Jobs:
     def __init__(self,root):
         self.root=root/'app-jobs';self.root.mkdir(exist_ok=True);self.live={};self.lock=threading.RLock()
@@ -164,6 +169,28 @@ def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',
         return {'id':key,'team_id':pack.team_id,'trade_date':str(pack.trade_date),'as_of_date':str(pack.as_of_date) if pack.as_of_date else None,
             'previous_review':review_previous(store,pack),
             'gate':pack.decision_gate(),'holdings_count':pack.account.holdings_count if pack.account else None,'nav_tradable':str(pack.account.nav_tradable) if pack.account else None}
+    def analysis_folder(ident):
+        if not re.fullmatch(r'[a-f0-9]{16}',ident):raise ValueError('無效分析版本')
+        folder=store.root/'strategy-analysis'/ident
+        manifest=json.loads((folder/'manifest.json').read_bytes())
+        for name in ['inputs.json','snapshot.json','report.json','report.md']:
+            if digest((folder/name).read_bytes())!=manifest['artifacts'].get(name):raise ValueError('analysis_artifact_hash_mismatch')
+        return folder
+    @app.get('/api/strategy-analysis')
+    def analysis_list():
+        rows=[]
+        for p in sorted((store.root/'strategy-analysis').glob('*/manifest.json'),key=lambda p:p.stat().st_mtime,reverse=True):
+            folder=analysis_folder(p.parent.name);r=json.loads((folder/'report.json').read_bytes())
+            rows.append({k:r[k] for k in ['id','source_run','reference_date','trade_date','cutoff_at']})
+        return {'reports':rows}
+    @app.get('/api/strategy-analysis/{ident}')
+    def analysis_report(ident):return json.loads((analysis_folder(ident)/'report.json').read_bytes())
+    @app.get('/api/strategy-analysis/{ident}/report.md')
+    def analysis_download(ident):return FileResponse(analysis_folder(ident)/'report.md',filename='strategy-analysis.md')
+    @app.post('/api/strategy-analysis')
+    def analysis_generate(data:StrategyAnalysisInput):
+        candidate_bundle(store,data.source_run)
+        return jobs.start(['--root',str(store.root),'analyze-strategy','--source-run',data.source_run,'--refresh'],'strategy_analysis')
     @app.get('/api/holdings')
     def holdings_view(snapshot_id:str|None=None):
         return portfolio_view(store,snapshot_id)

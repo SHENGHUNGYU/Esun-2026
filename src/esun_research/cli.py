@@ -97,6 +97,9 @@ def main():
     daily.add_argument('--llm-config',type=Path,required=True)
     daily.add_argument('--history-root',type=Path,required=True)
     daily.add_argument('--ssh-host',choices=sorted(RemoteGateway.ALLOWED_HOSTS))
+    analysis=sub.add_parser('analyze-strategy',help='選股排除與同籃子漸進配置實驗，不產生委託')
+    analysis.add_argument('--source-run',required=True)
+    analysis.add_argument('--refresh',action='store_true')
     args=parser.parse_args()
     if args.command=='daily-cycle':
         from .daily import run_daily
@@ -106,7 +109,11 @@ def main():
     store=Store(args.root)
     with (store.root/'execution.lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        if args.command=='ingest':
+        if args.command=='analyze-strategy':
+            from .strategy_analysis import run_analysis
+            output,result=run_analysis(store,args.source_run,args.refresh)
+            print(json.dumps({'folder':str(output),'input_errors':result['input_errors']},ensure_ascii=False))
+        elif args.command=='ingest':
             if args.profile=='decision':sources=candidate_sources()
             sources=[s for s in sources if s.id!='TWSE-DATED-QUOTES' or args.reference_date]
             gateway=RemoteGateway(args.ssh_host) if args.ssh_host else Gateway()

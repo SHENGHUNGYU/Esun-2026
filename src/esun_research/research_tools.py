@@ -29,10 +29,12 @@ class AgentSettings(Strict):
     maximum_replacements: int=Field(default=3,ge=0,le=10)
     retention_rank_buffer: int=Field(default=10,ge=0,le=50)
     minimum_rank_score_gap: Decimal=Field(default=Decimal('.15'),ge=0,le=1)
+    maximum_resize_pairs: int=Field(default=2,ge=0,le=5)
+    maximum_resize_weight: Decimal=Field(default=Decimal('.005'),gt=0,le=Decimal('.02'))
     weight_deadband: Decimal=Field(default=Decimal('.003'),ge=0,le=Decimal('.10'))
     minimum_trade_fraction: Decimal=Field(default=Decimal('.003'),ge=0,le=Decimal('.10'))
 
-    @field_serializer('maximum_daily_turnover','maximum_daily_cost','minimum_rank_score_gap','weight_deadband','minimum_trade_fraction')
+    @field_serializer('maximum_resize_weight','maximum_daily_turnover','maximum_daily_cost','minimum_rank_score_gap','weight_deadband','minimum_trade_fraction')
     def serialize_controls(self,value):return str(value)
 
     @model_validator(mode='after')
@@ -56,7 +58,7 @@ class StrategyProposal(Strict):
     name: str=Field(min_length=2,max_length=70)
     hypothesis: str=Field(min_length=15,max_length=500)
     failure_condition: str=Field(min_length=10,max_length=350)
-    mode: Literal['rebalance','full_rebalance','hold','risk_repair','previous']='rebalance'
+    mode: Literal['rebalance','full_rebalance','gradual','hold','risk_repair','previous']='rebalance'
     factors: list[Factor]=Field(min_length=0,max_length=8)
     screens: list[Screen]=Field(default_factory=list,max_length=8)
     holdings: int=Field(ge=20,le=30)
@@ -199,6 +201,11 @@ class ResearchWorkspace:
                 repair_exception=bool(old_errors)
                 targets=weights_for_positions(positions,self.pack,self.snapshot['prices'])
                 for c in positions:reasons.setdefault(c,'原有部位沒有需要修正的限制，維持實際股數。')
+            elif spec.mode=='gradual':
+                if not settled:raise ValueError('gradual_requires_settled_positions')
+                from .turnover import gradual_positions
+                positions,reasons,suppressed=gradual_positions(ranked,self.pack,self.snapshot,policy,self.settings,spec.weighting)
+                targets=weights_for_positions(positions,self.pack,self.snapshot['prices'])
             else:
                 targets=allocate_research(ranked,self.pack,policy,spec.weighting)
                 if settled and spec.mode in {'rebalance','previous'}:
@@ -245,6 +252,9 @@ class ResearchWorkspace:
                 turnover_notional_fraction=str(sum((decimal(self.snapshot['prices'][o['ticker']])*o['shares'] for o in orders),Decimal(0))/self.pack.account.nav_tradable),
                 scenarios=stresses,errors=sorted(set(errors)))
         except ValueError as error:result['errors']=[str(error)]
+        from .strategy_analysis import selection_diagnostics
+        result['diagnostics']=selection_diagnostics(self,spec,ranked,result.get('targets',{}))
+        result['errors']=sorted(set(result['errors']+self.snapshot.get('errors',[])))
         result['ranking']=ranked
         return result
 

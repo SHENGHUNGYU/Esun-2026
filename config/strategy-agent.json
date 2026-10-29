@@ -1,5 +1,5 @@
 {
-  "version": "llm-research-v2-continuity",
+  "version": "llm-research-v3-gradual",
   "max_steps": 20,
   "minimum_compared_strategies": 2,
   "maximum_strategies": 6,
@@ -15,5 +15,7 @@
   "retention_rank_buffer": 10,
   "minimum_rank_score_gap": "0.15",
   "weight_deadband": "0.003",
-  "minimum_trade_fraction": "0.003"
+  "minimum_trade_fraction": "0.003",
+  "maximum_resize_pairs": 2,
+  "maximum_resize_weight": "0.005"
 }

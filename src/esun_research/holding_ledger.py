@@ -213,6 +213,9 @@ def portfolio_view(store,pack_id=None):
     same_team=[p for _,p in rows if p.team_id==pack.team_id and p.account and p.as_of_date and pack.as_of_date and p.as_of_date<pack.as_of_date]
     prev=max(same_team,key=lambda p:p.as_of_date) if same_team else None
     if prev and len({p.account.aum for p in same_team if p.as_of_date==prev.as_of_date})>1:prev=None
+    from .strategy_analysis import asset_bridge
+    bridge_previous=prev or (initial[0] if len(principals)==1 and initial else None)
+    output['asset_bridge']=asset_bridge(bridge_previous,pack) if bridge_previous and pack.as_of_date else None
     output['previous_asset_change']=str(pack.account.aum-prev.account.aum) if prev else None
     output['previous_snapshot_date']=str(prev.as_of_date) if prev else None
     basis_path=store.root/'holding-ledger'/'cost-basis'/(event['id']+'.json')

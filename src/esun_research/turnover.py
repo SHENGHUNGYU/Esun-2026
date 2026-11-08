@@ -118,7 +118,7 @@ def continuity_positions(ranked,desired,pack,snapshot,policy,settings):
         if errors or budget_errors(orders,state,pack,snapshot['prices'],settings):continue
         positions=proposal;exits.pop(0);replacements+=1
         reasons[old]='排名已超出續抱區間，替代標的分數差通過門檻，成對換股且通過風險與成本預算。'
-        reasons[new]=reasons[old]
+        reasons[new]='排名進入新買候選範圍，對應被替換持股的訊號分數較低；分數差通過門檻，以賣出淨收入建立部位並通過風險與成本預算。'
     # Within-name re-equalisation is not a trade trigger. Record the suppressed
     # small proposals; material limit violations belong to the repair comparison.
     for c in sorted(set(held)&set(desired)&set(positions)):
@@ -145,6 +145,13 @@ def previous_strategy(store,pack,cutoff):
         if 'agent-research.json' not in manifest['artifacts']:continue
         research=json.loads((folder/'agent-research.json').read_bytes())
         if research.get('status')=='SELECTED':matches.append({'run_id':item['run_id'],'plan_sha256':item['plan_sha256'],'proposal':research['selected_evaluation']['proposal']})
+    from .decision_review import reported_submission
+    report=reported_submission(store,pack.team_id,pack.as_of_date,cutoff)
+    if report:
+        chosen=next((m for m in matches if m['run_id']==report['run_id'] and m['plan_sha256']==report['plan_hash']),None)
+        if report['event']['stage']=='submitted' and chosen:
+            return {**chosen,'identity_basis':'operator_report_plus_official_share_reconciliation','receipt_event_hash':report['event_hash'],'submission_verified':False}
+        return {'proposal':None,'reason':'latest_report_unknown_or_not_reconciled','submission_verified':False}
     hashes={StrategyProposal.model_validate(m['proposal']).economic_hash() for m in matches}
     if len(hashes)!=1:return {'proposal':None,'reason':'missing_or_ambiguous_reconciled_previous_strategy','submission_verified':False}
     return {**matches[0],'equivalent_local_matches':[m['run_id'] for m in matches],'submission_verified':False}

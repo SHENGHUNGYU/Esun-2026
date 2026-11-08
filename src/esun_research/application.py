@@ -77,6 +77,7 @@ class Jobs:
             result.append(value)
         return sorted(result,key=lambda row:row['started_at'],reverse=True)
     def start(self,args,kind,run_id=None):
+        if (self.root.parent/'maintenance-readonly.json').exists():raise ValueError('搬移維護中，暫停新增工作。')
         with self.lock:
             if any(j['state'] in {'running','attention_after_restart'} for j in self.list()):raise ValueError('另一項工作仍在執行或需要確認，請先查看工作紀錄。')
             ident=uuid.uuid4().hex;folder=self.root/ident;folder.mkdir()
@@ -124,6 +125,7 @@ def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',
     @app.middleware('http')
     async def protect(request,call_next):
         if request.method not in {'GET','HEAD'}:
+            if (store.root/'maintenance-readonly.json').exists():return JSONResponse({'detail':'資料搬移維護中，目前只供查閱。正式執行端切換後恢復。'},status_code=423)
             if request.headers.get('x-esun-token')!=token:return JSONResponse({'detail':'請重新開啟本機工作台後再試。'},status_code=403)
             origin=request.headers.get('origin')
             if origin and origin not in {str(request.base_url).rstrip('/')}:
@@ -139,7 +141,10 @@ def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',
     async def missing_file(request,error):return JSONResponse({'detail':'找不到指定資料或執行版本'},status_code=404)
     @app.get('/',response_class=HTMLResponse)
     def home():
-        return (Path(__file__).parent/'web/index.html').read_text().replace('__TOKEN__',token)
+        return (Path(__file__).parent/'web/index.html').read_text().replace('__TOKEN__',token).replace('僅在本機運行','遠端私有工作台' if os.environ.get('ESUN_DEPLOYMENT')=='remote-container' else '本機工作台')
+    @app.get('/api/health')
+    def health():
+        return {'status':'ok','deployment':os.environ.get('ESUN_DEPLOYMENT','local'),'read_only':(store.root/'maintenance-readonly.json').exists()}
     @app.get('/api/status')
     def status():
         codes,_=benchmark_settings();sources=[]
@@ -202,6 +207,49 @@ def create_app(root:Path,model_config:Path|None=PROJECT/'config/llm-local.json',
     async def holding_cost(snapshot_id:str=Form(...),file:UploadFile=File(...),proof:UploadFile=File(...)):
         if not re.fullmatch(r'[a-f0-9]{64}',snapshot_id):raise ValueError('無效快照識別')
         return import_basis(store,snapshot_id,await limited(file,200_000),await limited(proof,5_000_000))
+    @app.post('/api/holdings/transactions')
+    async def holding_transactions(snapshot_id:str=Form(...),file:UploadFile=File(...),proof:UploadFile=File(...)):
+        if not re.fullmatch(r'[a-f0-9]{64}',snapshot_id):raise ValueError('無效快照識別')
+        from .pnl import import_events
+        return import_events(store,snapshot_id,await limited(file,200_000),await limited(proof,5_000_000))
+    @app.get('/api/public-context')
+    def public_context():
+        from .public_context import latest
+        value=latest(store)
+        # Full raw observations remain hash-addressed, not stuffed into UI state.
+        observations=value.pop('observations',[])
+        value['observation_count']=len(observations)
+        value['sample']=[]
+        for source in value['sources']:
+            value['sample'].extend(sorted([r for r in observations if r['source_id']==source['id']],key=lambda r:r['observed_date'],reverse=True)[:3])
+        value['omitted_observations']=max(0,len(observations)-len(value['sample']))
+        return value
+    @app.get('/api/public-context/evidence')
+    def context_evidence(ref:str):
+        return Response(store.read(ref),media_type='application/octet-stream',headers={'Content-Disposition':'attachment; filename=public-evidence.bin'})
+    @app.post('/api/public-context/collect')
+    def public_context_collect():return jobs.start(['--root',str(store.root),'collect-context'],'public_context')
+    @app.get('/api/research-board')
+    def research_board_list():
+        reports=[]
+        for path in (store.root/'research-board').glob('*/report.json'):
+            report=json.loads(path.read_bytes())
+            reports.append(report)
+        return {'reports':sorted(reports,key=lambda r:r['cutoff_at'],reverse=True)}
+    @app.post('/api/research-board')
+    def research_board_start(data:RunInput):
+        if not re.fullmatch(r'[a-f0-9]{64}',data.datapack_id):raise ValueError('無效資料包識別')
+        path=store.root/'app-inputs'/(data.datapack_id+'.json');pack=DataPack.model_validate_json(path.read_bytes())
+        from .public_context import latest
+        context=latest(store)
+        if not context.get('id'):raise ValueError('請先更新跨市場資料')
+        if not model_config or not model_config.exists():raise ValueError('尚未設定本地模型')
+        connection.ensure();ident='board-'+uuid.uuid4().hex[:12]
+        args=['--root',str(store.root),'research-board','--run-id',ident,'--context-id',context['id'],
+              '--datapack',str(path),'--llm-config',str(model_config)]
+        research=store.root/'agent-inputs'/('research-data-'+str(pack.as_of_date)+'.json')
+        if research.exists():args+=['--research-data',str(research)]
+        return jobs.start(args,'research_board')
     @app.post('/api/daily-cycle')
     def daily_cycle(data:RunInput):
         if not re.fullmatch(r'[a-f0-9]{64}',data.datapack_id):raise ValueError('無效資料包識別')

@@ -49,8 +49,21 @@ def failure_detail(store,run_id,error):
     evidence=json.loads(calls.read_bytes()) if calls.exists() else []
     if any('Connection refused' in (c.get('error') or '') for c in evidence):
         return '模型通道未連線（Connection refused）；資料已備妥，尚未進入策略評估。請恢復通道後建立新版本。'
-    if codes:return '候選驗證未通過：'+', '.join(codes)
-    if isinstance(error,subprocess.CalledProcessError):return '此階段工作失敗，請查看工作紀錄中的底層錯誤。'
+    if codes:
+        research=folder/'agent-research.json'
+        detail=''
+        if research.exists() and any(e.startswith(('agent_research_','agent_exploration_','agent_selection_','agent_action_contract_','agent_model_output_')) for e in codes):
+            r=json.loads(research.read_bytes());p=r.get('research_progress',{})
+            counts=p.get('phase_steps',{})
+            detail='；研究進度：'+('、'.join(k+' '+str(v)+' 步' for k,v in counts.items()) or '未完成動作')
+            if p.get('last_tool_error'):detail+='；底層原因：'+p['last_tool_error']
+            detail+='；已保留研究與檢查點，請使用修正版接續。'
+        return '候選驗證未通過：'+', '.join(codes)+detail
+    if isinstance(error,subprocess.CalledProcessError):
+        detail=error.stderr or ''
+        if 'factor_weights_must_sum_to_one' in detail:
+            return '策略因子權重驗證失敗（factor_weights_must_sum_to_one）；請查看工作紀錄並建立修正版流程。'
+        return '此階段工作失敗（exit_code='+str(error.returncode)+'），請查看工作紀錄中的底層錯誤。'
     return str(error)[:500]
 
 
@@ -78,12 +91,15 @@ def run_daily(root, datapack, run_id, model_config, history_root, ssh_host=None,
             state.update(status=status,updated_at=now(),**extra);atomic_write(state_path,encoded(state))
             print(json.dumps(state,ensure_ascii=False),flush=True)
         def execute(args):
-            subprocess.run([sys.executable,'-m','esun_research.cli','--root',str(store.root),*args],cwd=PROJECT,check=True)
+            result=subprocess.run([sys.executable,'-m','esun_research.cli','--root',str(store.root),*args],cwd=PROJECT,stderr=subprocess.PIPE,text=True)
+            if result.stderr:print(result.stderr,file=sys.stderr,flush=True)
+            result.check_returncode()
         execute=runner or execute
         remote=['--ssh-host',ssh_host] if ssh_host else []
         steps=[('decision_data',['ingest','--profile','decision','--reference-date',reference,*remote]),
             ('news',['ingest','--profile','research',*remote]),
             ('research_factors',['collect-agent-data','--reference-date',reference,'--history-root',str(history_root)]),
+            ('context_research',['collect-context','--run-id',run_id,'--datapack',str(folder/'datapack.json'),'--research-data',str(store.root/'agent-inputs'/('research-data-'+reference+'.json'))]),
             ('generate',['generate-dplan','--run-id',run_id,'--datapack',str(folder/'datapack.json'),
                 '--team-id',pack.team_id,'--trade-date',str(pack.trade_date),'--reference-date',reference,'--mode','live',
                 '--decision-engine','llm_agent','--llm-config',str(model_config),
@@ -95,7 +111,11 @@ def run_daily(root, datapack, run_id, model_config, history_root, ssh_host=None,
                 args=['resume-dplan','--run-id',run_id]
             try:execute(args)
             except Exception as error:
-                save('BLOCKED',error=failure_detail(store,run_id,error));raise
+                if name=='context_research':
+                    state.setdefault('optional_step_errors',{})[name]=failure_detail(store,run_id,error)
+                    save('RUNNING',error=None)
+                else:
+                    save('BLOCKED',error=failure_detail(store,run_id,error));raise
             state['completed_steps'].append(name);save('RUNNING')
         candidate_folder,manifest=candidate_bundle(store,run_id)
         if manifest['status']!='CANDIDATE_BLOCKED_EXTERNAL_CHECKS':

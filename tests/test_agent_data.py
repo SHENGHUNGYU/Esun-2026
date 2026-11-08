@@ -1,3 +1,4 @@
+from decimal import Decimal as D
 import copy
 import json
 from pathlib import Path
@@ -55,3 +56,23 @@ def test_wrong_flow_date_is_a_gap_not_zero_or_previous_day_fallback(tmp_path):
     flows[0]=store.put_json(cap);bundle=build_bundle(store,'2026-09-30',when,hist,flows,quotes)
     assert not any(c['feature'].endswith('net_ratio') for c in bundle['cells'])
     assert any(m.get('reason')=='flow_date_or_status_mismatch' for m in bundle['missing'])
+
+
+def test_legacy_bundles_remain_reproducible_after_upgrade(tmp_path):
+    from esun_research.agent_data import LEGACY_VERSION
+    store,when,hist,flows,quotes=inputs(tmp_path)
+    bundle=build_bundle(store,'2026-09-30',when,hist,flows,quotes,version=LEGACY_VERSION)
+    assert 'risk_data' not in bundle
+    assert validate_bundle(store,bundle,{'as_of':'2026-09-30','cutoff_at':when})==bundle
+
+
+def test_flow_date_history_and_optional_dealer_split_are_explicit(tmp_path):
+    store,when,hist,flows,quotes=inputs(tmp_path)
+    cap=store.json(flows[0]);body=store.json(cap['raw_ref'])
+    body['fields']+=['自營商買賣超股數(自行買賣)','自營商買賣超股數(避險)'];body['data'][0]+=['300','-300']
+    cap['raw_ref']=store.put_json(body);flows=[store.put_json(cap)]
+    bundle=build_bundle(store,'2026-09-30',when,hist,flows,quotes)
+    cells={(c['code'],c['feature']):c['value'] for c in bundle['cells']}
+    assert D(cells['2330','dealer_self_net_ratio'])>0 and D(cells['2330','dealer_hedge_net_ratio'])<0
+    cap['reference_date']='2026-10-01';flows=[store.put_json(cap)]
+    with pytest.raises(ValueError,match='after_reference'):build_bundle(store,'2026-09-30',when,hist,flows,quotes)

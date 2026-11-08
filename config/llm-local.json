@@ -5,6 +5,6 @@
   "digest": "6fac2f98fdf716f292de04c8554681b1e1f3a0d71445e374afebb3433911f705",
   "provider": "other",
   "timeout_seconds": 180,
-  "context_tokens": 8192,
-  "output_tokens": 1800
+  "context_tokens": 16384,
+  "output_tokens": 3072
 }

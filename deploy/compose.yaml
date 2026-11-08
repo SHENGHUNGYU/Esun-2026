@@ -1,0 +1,48 @@
+services:
+  workbench:
+    image: esun-agent:${ESUN_RELEASE:?set_release}
+    build:
+      context: ..
+      target: runtime
+      args:
+        PROJECT_DIR: ${ESUN_PROJECT_DIR:-/opt/esun}
+    network_mode: host
+    user: "${ESUN_UID:-1000}:${ESUN_GID:-1000}"
+    init: true
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Taipei
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      LANGSMITH_TRACING: "false"
+      ESUN_DEPLOYMENT: remote-container
+    volumes:
+      - ${ESUN_DATA_DIR:?set_data_dir}/artifacts:${ESUN_PROJECT_DIR:-/opt/esun}/artifacts
+      - ${ESUN_DATA_DIR:?set_data_dir}/output:${ESUN_PROJECT_DIR:-/opt/esun}/output
+      - ${ESUN_SERVER_MODEL_CONFIG:?set_model_config}:${ESUN_PROJECT_DIR:-/opt/esun}/config/llm-server.json:ro
+    command:
+      - python
+      - -m
+      - esun_research.application
+      - --root
+      - ${ESUN_PROJECT_DIR:-/opt/esun}/artifacts/llm-agent-20261027
+      - --history-root
+      - ${ESUN_PROJECT_DIR:-/opt/esun}/artifacts/history-202604-202609
+      - --llm-config
+      - ${ESUN_PROJECT_DIR:-/opt/esun}/config/llm-server.json
+      - --port
+      - "8766"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8766/api/health', timeout=5)"]
+      interval: 30s
+      timeout: 8s
+      retries: 3
+      start_period: 30s
+    mem_limit: 4g
+    cpus: 2
+    pids_limit: 256
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

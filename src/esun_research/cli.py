@@ -91,6 +91,12 @@ def main():
     decision.add_argument('--research-data',type=Path,help='由資料工具建立並可回源驗證的研究因子bundle')
     resume=sub.add_parser('resume-dplan',help='依已封存參數恢復本地候選，不重抓資料')
     resume.add_argument('--run-id',required=True)
+    prose=sub.add_parser('retry-dplan-review',help='保留封存自主決策，只重試失敗的逐股說明與完整驗證')
+    prose.add_argument('--source-run',required=True)
+    prose.add_argument('--run-id',required=True)
+    continuation=sub.add_parser('retry-dplan-research',help='保留已完成研究，接續因上下文或步數容量而受阻的候選')
+    continuation.add_argument('--source-run',required=True)
+    continuation.add_argument('--run-id',required=True)
     daily=sub.add_parser('daily-cycle',help='依官方結算更新資料並產生下一交易日候選，不正式送出')
     daily.add_argument('--run-id',required=True)
     daily.add_argument('--datapack',type=Path,required=True)
@@ -100,10 +106,59 @@ def main():
     analysis=sub.add_parser('analyze-strategy',help='選股排除與同籃子漸進配置實驗，不產生委託')
     analysis.add_argument('--source-run',required=True)
     analysis.add_argument('--refresh',action='store_true')
+    context=sub.add_parser('collect-context',help='取得免金鑰跨市場資料並建立平行研究事實包')
+    context.add_argument('--run-id')
+    context.add_argument('--datapack',type=Path)
+    context.add_argument('--research-data',type=Path)
+    board=sub.add_parser('research-board',help='執行有界專員與反證研究，不產生委託')
+    board.add_argument('--run-id',required=True)
+    board.add_argument('--context-id',required=True)
+    board.add_argument('--datapack',type=Path)
+    board.add_argument('--research-data',type=Path)
+    board.add_argument('--llm-config',type=Path)
     args=parser.parse_args()
+    if (args.root/'maintenance-readonly.json').exists():raise ValueError('migration_read_only: production writes paused')
+    if args.command=='retry-dplan-research':
+        from .review_retry import retry_research
+        result=retry_research(Store(args.root),args.source_run,args.run_id)
+        print(json.dumps({'status':result['status'],'report':result['report']},ensure_ascii=False))
+        if result['errors']:raise SystemExit(2)
+        return
+    if args.command=='retry-dplan-review':
+        from .review_retry import retry_review
+        result=retry_review(Store(args.root),args.source_run,args.run_id)
+        print(json.dumps({'status':result['status'],'report':result['report']},ensure_ascii=False))
+        if result['errors']:raise SystemExit(2)
+        return
     if args.command=='daily-cycle':
         from .daily import run_daily
         run_daily(args.root,args.datapack,args.run_id,args.llm_config,args.history_root,args.ssh_host)
+        return
+    if args.command in {'collect-context','research-board'}:
+        from .public_context import collect
+        from .research_board import run_board
+        from .datapack import DataPack
+        store=Store(args.root)
+        with (store.root/'execution.lock').open('a') as lock:
+            fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            if args.command=='collect-context':
+                context,ident=collect(store)
+            else:
+                import re
+                if not re.fullmatch(r'[a-f0-9]{64}',args.context_id):raise ValueError('invalid_context_id')
+                manifest=json.loads((store.root/'public-context'/(args.context_id+'.json')).read_bytes())
+                context=store.json(manifest['bundle_ref']);ident=args.context_id
+                if digest(encoded(context))!=ident:raise ValueError('public_context_integrity_failed')
+            report=None
+            if args.run_id:
+                model=None;config=None
+                if args.command=='research-board' and args.llm_config:
+                    from .llm import ModelConfig,OllamaModel
+                    config=ModelConfig.model_validate_json(args.llm_config.read_bytes());model=OllamaModel(config)
+                pack=DataPack.model_validate_json(args.datapack.read_bytes()) if args.datapack else None
+                report=run_board(store,args.run_id,context,pack,args.research_data,model,config)
+            print(json.dumps({'context_id':ident,'source_status':{s['id']:s['status'] for s in context['sources']},
+                              'research_status':report['status'] if report else None,'production_authorized':False},ensure_ascii=False))
         return
     sources,universe=settings()
     store=Store(args.root)

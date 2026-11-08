@@ -9,6 +9,15 @@ from esun_research.candidate import generate_candidate
 from test_candidate import environment
 
 
+def test_failure_detail_exposes_known_validation_without_raw_stderr(environment):
+    import subprocess
+    from esun_research.daily import failure_detail
+    store,*_=environment
+    error=subprocess.CalledProcessError(1,['test'],stderr='private path: factor_weights_must_sum_to_one')
+    message=failure_detail(store,'absent',error)
+    assert 'factor_weights_must_sum_to_one' in message and 'private path' not in message
+
+
 def test_daily_uses_official_dates_and_stops_then_resumes(environment,monkeypatch):
     store,sources,universe,pack,policy,schema,req=environment
     data=pack.model_dump(mode='json');data.update(trade_date='2026-11-02',as_of_date='2026-10-30')
@@ -26,7 +35,7 @@ def test_daily_uses_official_dates_and_stops_then_resumes(environment,monkeypatc
     calls.clear()
     result=run_daily(store.root,path,'daily-test',config,store.root/'history',runner=calls.append)
     assert result['status']=='LOCAL_CANDIDATE_READY'
-    assert [a[0] for a in calls]==['collect-agent-data','generate-dplan']
+    assert [a[0] for a in calls]==['collect-agent-data','collect-context','generate-dplan']
     args=calls[-1];assert args[args.index('--trade-date')+1]=='2026-11-02'
     assert args[args.index('--reference-date')+1]=='2026-10-30'
     assert '--llm-config' in args and '--research-data' in args
@@ -66,3 +75,16 @@ def test_daily_api_derives_dates_and_requires_llm(environment,monkeypatch):
     assert '--reference-date' not in seen[0][0] and '--trade-date' not in seen[0][0]
     assert client.post('/api/daily-cycle',json={**body,'llm':False},headers=auth).status_code==400
     assert client.post('/api/daily-cycle',json={**body,'datapack_id':'../bad'},headers=auth).status_code==400
+
+
+def test_shadow_failure_is_visible_without_bypassing_production_checks(environment,monkeypatch):
+    store,_,_,pack,*_=environment
+    data=store.root/'daily-pack.json';data.write_text(pack.model_dump_json())
+    config=store.root/'model.json';config.write_text('{}');calls=[]
+    def runner(args):
+        calls.append(args[0])
+        if args[0]=='collect-context':raise RuntimeError('shadow-source-failed')
+    monkeypatch.setattr('esun_research.daily.candidate_bundle',lambda *a:(None,{'status':'CANDIDATE_BLOCKED_EXTERNAL_CHECKS'}))
+    result=run_daily(store.root,data,'shadow-failure',config,store.root/'history',runner=runner)
+    assert calls[-1]=='generate-dplan' and result['optional_step_errors']['context_research']=='shadow-source-failed'
+    assert result['official_submission_performed'] is False

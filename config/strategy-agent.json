@@ -1,6 +1,6 @@
 {
-  "version": "llm-research-v3-gradual",
-  "max_steps": 20,
+  "version": "llm-research-v5-progress-contract",
+  "max_steps": 24,
   "minimum_compared_strategies": 2,
   "maximum_strategies": 6,
   "maximum_revisions": 2,
@@ -17,5 +17,13 @@
   "weight_deadband": "0.003",
   "minimum_trade_fraction": "0.003",
   "maximum_resize_pairs": 2,
-  "maximum_resize_weight": "0.005"
+  "maximum_resize_weight": "0.005",
+  "maximum_cash_deployment": "0.02",
+  "maximum_probe_weight": "0.01",
+  "minimum_probe_cash": "0.18",
+  "maximum_probe_names": 2,
+  "require_cash_probe_comparison": true,
+  "maximum_exploration_steps": 8,
+  "maximum_review_steps": 20,
+  "maximum_selection_steps": 4
 }

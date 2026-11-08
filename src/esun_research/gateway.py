@@ -4,12 +4,24 @@ import time
 import signal
 import subprocess
 import shlex
+import json
 from urllib.parse import urlparse
 import httpx
 from .store import Store
 from .contracts import Source
 
 HOSTS = {'openapi.twse.com.tw','www.tpex.org.tw','feeds.feedburner.com','api.finmindtrade.com'}
+
+def official_payload_error(source,body):
+    """HTTP success is not a successful official OpenAPI data response."""
+    parsed=urlparse(source.url)
+    if not (parsed.hostname=='openapi.twse.com.tw' or
+            parsed.hostname=='www.tpex.org.tw' and parsed.path.startswith('/openapi/')):return None
+    if b'FOR SECURITY REASONS' in body.upper():return 'official_security_block_page'
+    try:value=json.loads(body)
+    except (ValueError,UnicodeDecodeError):return 'official_invalid_json_response'
+    if not isinstance(value,list):return 'official_expected_json_array'
+    return None
 
 class Gateway:
     def __init__(self, client=None, sleep=time.sleep, timeout=20, interval=1.0):
@@ -55,6 +67,11 @@ class Gateway:
                             return response.content,'invalid_json'
                         if value.get('status')!=200:
                             return response.content,'finmind_body_status_'+str(value.get('status'))
+                    payload_error=official_payload_error(source,response.content)
+                    if payload_error:
+                        if attempt<1:
+                            self.sleep(2);continue
+                        return response.content,payload_error
                     return response.content,None
                 error='http_'+str(response.status_code)
                 retry=response.status_code in {429,500,502,503,504}
@@ -102,7 +119,14 @@ class RemoteGateway:
                     '-o','ConnectTimeout=8','-o','ConnectionAttempts=1','nelson@'+self.host,command],
                     capture_output=True,timeout=70)
             except subprocess.TimeoutExpired:return None,'remote_download_timeout'
-            if not p.returncode:break
+            if not p.returncode:
+                if len(p.stdout)>25_000_000:return None,'response_too_large'
+                payload_error=official_payload_error(source,p.stdout)
+                if payload_error:
+                    if attempt==0:
+                        time.sleep(2);continue
+                    return p.stdout,payload_error
+                break
             if p.returncode==255:
                 detail=p.stderr.decode('utf-8',errors='replace').lower()
                 if any(x in detail for x in ['permission denied','host key verification failed','remote host identification has changed']):

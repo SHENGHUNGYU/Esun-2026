@@ -16,6 +16,9 @@ class Strict(BaseModel):
 class AgentSettings(Strict):
     version: str
     max_steps: int=Field(default=20,ge=8,le=40)
+    maximum_exploration_steps: int=Field(default=8,ge=4,le=12)
+    maximum_review_steps: int=Field(default=20,ge=1,le=24)
+    maximum_selection_steps: int=Field(default=4,ge=1,le=6)
     minimum_compared_strategies: int=Field(default=2,ge=2,le=4)
     maximum_strategies: int=Field(default=6,ge=2,le=8)
     maximum_revisions: int=Field(default=2,ge=0,le=3)
@@ -29,12 +32,17 @@ class AgentSettings(Strict):
     maximum_replacements: int=Field(default=3,ge=0,le=10)
     retention_rank_buffer: int=Field(default=10,ge=0,le=50)
     minimum_rank_score_gap: Decimal=Field(default=Decimal('.15'),ge=0,le=1)
+    maximum_cash_deployment: Decimal=Field(default=Decimal('.02'),gt=0,le=Decimal('.04'))
+    maximum_probe_weight: Decimal=Field(default=Decimal('.01'),gt=0,le=Decimal('.02'))
+    minimum_probe_cash: Decimal=Field(default=Decimal('.18'),ge=Decimal('.10'),le=Decimal('.22'))
+    maximum_probe_names: int=Field(default=2,ge=1,le=3)
+    require_cash_probe_comparison: bool=True
     maximum_resize_pairs: int=Field(default=2,ge=0,le=5)
     maximum_resize_weight: Decimal=Field(default=Decimal('.005'),gt=0,le=Decimal('.02'))
     weight_deadband: Decimal=Field(default=Decimal('.003'),ge=0,le=Decimal('.10'))
     minimum_trade_fraction: Decimal=Field(default=Decimal('.003'),ge=0,le=Decimal('.10'))
 
-    @field_serializer('maximum_resize_weight','maximum_daily_turnover','maximum_daily_cost','minimum_rank_score_gap','weight_deadband','minimum_trade_fraction')
+    @field_serializer('maximum_cash_deployment','maximum_probe_weight','minimum_probe_cash','maximum_resize_weight','maximum_daily_turnover','maximum_daily_cost','minimum_rank_score_gap','weight_deadband','minimum_trade_fraction')
     def serialize_controls(self,value):return str(value)
 
     @model_validator(mode='after')
@@ -58,7 +66,7 @@ class StrategyProposal(Strict):
     name: str=Field(min_length=2,max_length=70)
     hypothesis: str=Field(min_length=15,max_length=500)
     failure_condition: str=Field(min_length=10,max_length=350)
-    mode: Literal['rebalance','full_rebalance','gradual','hold','risk_repair','previous']='rebalance'
+    mode: Literal['rebalance','full_rebalance','gradual','cash_probe','hold','risk_repair','previous']='rebalance'
     factors: list[Factor]=Field(min_length=0,max_length=8)
     screens: list[Screen]=Field(default_factory=list,max_length=8)
     holdings: int=Field(ge=20,le=30)
@@ -97,10 +105,33 @@ FEATURES={
  'trust_net_ratio':('flows','net_shares/volume_shares','投信淨買股數／同日成交股數'),
  'dealer_net_ratio':('flows','net_shares/volume_shares','自營商淨買股數／同日成交股數')}
 
+# Window features are usable only when the entire corresponding raw window exists.
+FEATURES.update({
+ 'dealer_self_net_ratio':('flows','net_shares/volume_shares','自營自行買賣，與避險分開；缺欄位不推估'),
+ 'dealer_hedge_net_ratio':('flows','net_shares/volume_shares','自營避險；不能視為純方向性看法'),
+ 'relative_pool_5':('technical','return_difference','五日價格報酬減競賽池等權代理；非官方指數'),
+ 'relative_pool_20':('technical','return_difference','二十日價格報酬減競賽池等權代理；非官方指數'),
+ 'relative_industry_20':('technical','return_difference','當期產業同儕等權、排除本股、至少三檔；非官方產業指數'),
+ 'beta_pool_20':('technical','beta','二十期相對競賽池代理Beta；短樣本、非TAIEX Beta'),
+ 'ma_distance_5':('technical','ratio','收盤相對五日均價距離；過熱與趨勢需另判斷'),
+ 'ma_distance_20':('technical','ratio','收盤相對二十日均價距離'),
+ 'volume_ratio_5':('technical','ratio','當日股數除前五交易日均量；不含當日於分母'),
+ 'drawdown_20':('technical','ratio','相對近二十日最高收盤回撤，負值'),
+ 'breakout_20':('technical','ratio','收盤相對前二十交易日最高價；正值為突破，不保證延續')})
+for base in ('foreign','trust','dealer','dealer_self','dealer_hedge'):
+    for n in (3,5,10):
+        FEATURES[base+'_net_ratio_'+str(n)]=('flows','sum_net_shares/sum_volume',f'完整{n}交易日累計淨買股數除累計成交股數；非單日比例平均')
+        FEATURES[base+'_buy_days_'+str(n)]=('flows','sessions',f'完整{n}交易日中淨買超天數；不等於連買天數')
+    FEATURES[base+'_flow_change_5']=('flows','ratio_difference','最近五交易日流量比減前五交易日；非預測')
+
+FEATURES.update({'momentum_1':('technical','ratio','完整面板最近一期收盤報酬，非盤中預測'),
+ 'momentum_3':('technical','ratio','完整面板近三期收盤報酬，仍非反轉確認')})
+
 class ResearchWorkspace:
-    def __init__(self,snapshot,pack,policy,settings,extra=None):
+    def __init__(self,snapshot,pack,policy,settings,extra=None,cutoff=None):
         self.snapshot=snapshot;self.pack=pack;self.policy=policy;self.settings=settings
-        self.rows={};self.evidence={};self.news=[]
+        self.market_state={'state':'unknown','reason':'no_verified_panel'}
+        self.rows={};self.evidence={};self.news=[];self.risk_data=(extra or {}).get('risk_data',{})
         by=defaultdict(list)
         for r in snapshot['records']:by[(r['security_id'],r['kind'])].append(r)
         for c in snapshot['candidates']:
@@ -124,7 +155,20 @@ class ResearchWorkspace:
         # Additional computed factors must already be verified against raw inputs by
         # the input builder. Their whole bundle is frozen by the caller, never model-written.
         if extra:
-            for item in extra.get('cells',[]):
+            from .market_signals import industry_cells
+            from .cash_probe import market_state
+            self.market_state=market_state(self.risk_data)
+            classifications={}
+            for c,r in self.rows.items():
+                rev=r['candidate'].get('revenue')
+                if rev:classifications[c]=[{k:rev[k] for k in ['source_id','raw_ref','raw_row','date','available_at']}]
+            peer_cells=industry_cells(self.risk_data,{c:r['industry'] for c,r in self.rows.items()},classifications)
+            for c,series in self.risk_data.get('series',{}).items():
+                for n in (1,3):
+                    value=str(decimal(series['closes'][-1])/decimal(series['closes'][-n-1])-1)
+                    item={'code':c,'feature':'momentum_'+str(n),'value':value,'rows':series['evidence'][-n-1:]}
+                    item['evidence_id']='E'+digest(encoded(item))[:18];peer_cells.append(item)
+            for item in [*extra.get('cells',[]),*peer_cells]:
                 code=item['code'];name=item['feature']
                 if code not in self.rows or name not in FEATURES:continue
                 if name in self.rows[code]['values']:raise ValueError('research_factor_override_forbidden')
@@ -135,6 +179,11 @@ class ResearchWorkspace:
                 eid='E'+digest(encoded(r))[:18];self.evidence[eid]=r
                 self.news.append({'evidence_id':eid,'code':r['security_id'] or None,'text':r['text'][:450],
                     'published_at':r['published_at'],'available_at':r['available_at']})
+        from .market_signals import event_signals
+        cutoff=cutoff or snapshot.get('cutoff_at') or snapshot.get('request',{}).get('cutoff_at')
+        if not cutoff:
+            cutoff=max((r['available_at'] for r in self.news),default=None)
+        if cutoff:self.news=event_signals(self.news,self.risk_data,cutoff)
 
     def catalog(self):
         result=[]
@@ -201,6 +250,21 @@ class ResearchWorkspace:
                 repair_exception=bool(old_errors)
                 targets=weights_for_positions(positions,self.pack,self.snapshot['prices'])
                 for c in positions:reasons.setdefault(c,'原有部位沒有需要修正的限制，維持實際股數。')
+            elif spec.mode=='cash_probe':
+                if not settled:raise ValueError('cash_probe_requires_settled_positions')
+                from .cash_probe import probe_positions
+                positions,reasons,suppressed,deployment=probe_positions(ranked,self.rows,self.pack,self.snapshot,policy,self.settings,spec.cash_target)
+                result['cash_deployment']=deployment
+                # Freeze all gate observations for actual purchases, even when
+                # they are filters rather than weighted ranking factors.
+                for row in ranked:
+                    c=row['code']
+                    if positions.get(c,0)<=held.get(c,0):continue
+                    for feature in ['revenue_yoy_pct','relative_pool_20','momentum_1','momentum_3','foreign_net_ratio_3','trust_net_ratio_3']:
+                        if feature in self.rows[c]['values']:
+                            row['research_features'][feature]=self.rows[c]['values'][feature]
+                            row['research_evidence'][feature]=self.rows[c]['evidence'].get(feature,[])
+                targets=weights_for_positions(positions,self.pack,self.snapshot['prices'])
             elif spec.mode=='gradual':
                 if not settled:raise ValueError('gradual_requires_settled_positions')
                 from .turnover import gradual_positions
@@ -220,7 +284,11 @@ class ResearchWorkspace:
                             suppressed.append({'code':c,'reason':'weight_deadband_or_minimum_trade'})
                     reasons={c:'本次完整配置候選；需與不交易及沿用昨日規則比較，並通過逐筆與整體成本預算。' for c in set(targets)|set(held)}
             result.update(continuity={'enabled':settled,'mode':spec.mode,'trade_reasons':reasons,'suppressed_adjustments':suppressed,
-                'risk_repair_budget_exception':repair_exception,'limits':self.settings.model_dump(mode='json'),
+                'risk_repair_budget_exception':repair_exception,
+                # Workflow budgets are recorded in research inputs/progress.
+                # They do not change a portfolio's economic evaluation and must
+                # not invalidate replay of archived financial limits.
+                'limits':self.settings.model_dump(mode='json',exclude={'maximum_exploration_steps','maximum_review_steps','maximum_selection_steps'}),
                 'note':'Internal initial controls, not validated return thresholds; factor scores are not returns.'})
             held={h.code:h.shares for h in self.pack.holdings if h.shares>0};decisions=[]
             for code in sorted(set(targets)|set(held)):
@@ -247,7 +315,7 @@ class ResearchWorkspace:
             if settled:
                 for order in orders:
                     if order['ticker'] not in reasons:errors.append('trade_necessity_reason_missing')
-            result.update(targets=targets,policy=policy.model_dump(mode='json'),orders=orders,
+            result.update(replacement_count=sum(c not in held for c in projection['positions']),targets=targets,policy=policy.model_dump(mode='json'),orders=orders,
                 holdings=len(projection['positions']),cash_ratio=str(projection['cash_ratio']),cost_twd=str(projection['fees']),
                 turnover_notional_fraction=str(sum((decimal(self.snapshot['prices'][o['ticker']])*o['shares'] for o in orders),Decimal(0))/self.pack.account.nav_tradable),
                 scenarios=stresses,errors=sorted(set(errors)))
@@ -255,6 +323,9 @@ class ResearchWorkspace:
         from .strategy_analysis import selection_diagnostics
         result['diagnostics']=selection_diagnostics(self,spec,ranked,result.get('targets',{}))
         result['errors']=sorted(set(result['errors']+self.snapshot.get('errors',[])))
+        if result.get('targets') is not None:
+            from .market_signals import risk_comparison
+            result['risk_comparison']=risk_comparison(self,projection['weights'])
         result['ranking']=ranked
         return result
 

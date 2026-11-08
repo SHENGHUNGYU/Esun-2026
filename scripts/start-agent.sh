@@ -1,6 +1,18 @@
 #!/bin/sh
 set -eu
 cd "$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+# After migration, this launcher reconnects the UI instead of creating a
+# second local production writer. Explicit development remains possible.
+if [ -f artifacts/remote-workbench-tunnel/deployment.json ] && [ "${ESUN_LOCAL_DEVELOPMENT:-0}" != 1 ]; then
+    agent_domain="gui/$(id -u)"
+    if ! launchctl print "$agent_domain/com.esun.agent-remote-tunnel" >/dev/null 2>&1; then
+        launchctl bootstrap "$agent_domain" "$HOME/Library/LaunchAgents/com.esun.agent-remote-tunnel.plist"
+    fi
+    curl --fail --silent --max-time 10 http://127.0.0.1:8766/api/health
+    echo '
+遠端工作台：http://127.0.0.1:8766/；正式執行與資料位於遠端容器。'
+    exit 0
+fi
 uv sync --frozen
 agent_tunnel_pid=''
 cleanup() {

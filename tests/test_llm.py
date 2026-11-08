@@ -46,11 +46,11 @@ def test_complete_review_cannot_change_orders_and_resumes_without_model(environm
     store,sources,universe,req,config=enable(environment);model=EvidenceModel()
     result=generate_candidate(store,req,sources,universe,model=model)
     assert result['status']=='CANDIDATE_BLOCKED_EXTERNAL_CHECKS'
-    assert model.calls==8
+    assert model.calls==26
     plan=store.json(result['plan'])['plan'];review=store.json(result['llm_review'])
     assert plan['agent_metadata']['model_provider']=='other'
     assert config.digest[:16] in plan['agent_metadata']['model_version']
-    assert plan['agent_metadata']['input_tokens']==80
+    assert plan['agent_metadata']['input_tokens']==260
     baseline=json.loads((store.root/'candidates'/req.run_id/'compiled.json').read_bytes())['plan']
     assert plan['orders']==baseline['orders'] and plan['decisions']==baseline['decisions']
     assert plan['inferences']!=baseline['inferences']
@@ -87,8 +87,8 @@ def test_interrupted_model_review_uses_completed_batch_journal(environment):
     with pytest.raises(KeyboardInterrupt):generate_candidate(store,req,sources,universe,model=model)
     assert model.calls==2
     result=generate_candidate(store,req,sources,universe,model=model)
-    assert result['status']=='CANDIDATE_BLOCKED_EXTERNAL_CHECKS' and model.calls==8
-    assert len(store.json(result['llm_review'])['call_refs'])==8
+    assert result['status']=='CANDIDATE_BLOCKED_EXTERNAL_CHECKS' and model.calls==26
+    assert len(store.json(result['llm_review'])['call_refs'])==26
 
 @pytest.mark.parametrize('change',[{'done':False},{'done_reason':'length'},{'message':{'content':'{}','tool_calls':[{'name':'send_order'}]}}])
 def test_incomplete_or_tool_request_model_response_is_rejected(change):
@@ -133,3 +133,16 @@ def test_disclaimer_sentence_does_not_turn_next_citation_into_a_forecast():
     verify_text('特定個股（如8299）僅依觀測核對，仍有風險。',ids,values)
     for text in ['預期報酬25%，因此直接投入。','O45顯示預測漲幅25%。','個股8299的預期報酬1880元。','價格為8299元。','O999顯示8299的參考收盤價為1880。']:
         with pytest.raises(ValueError):verify_text(text,ids,values)
+
+
+def test_truncated_response_retains_raw_evidence_but_is_never_accepted():
+    from esun_research.llm import ModelResponseError
+    config=ModelConfig(base_url='http://127.0.0.1:11435',model='test-only',digest='a'*64)
+    def handler(request):
+        if request.url.path=='/api/tags':return httpx.Response(200,json={'models':[{'name':config.model,'digest':config.digest}]})
+        return httpx.Response(200,json={'model':config.model,'done':True,'done_reason':'length','eval_count':3072,'message':{'content':'{"partial":'}})
+    with pytest.raises(ModelResponseError) as caught:
+        OllamaModel(config,httpx.Client(transport=httpx.MockTransport(handler))).complete([],{'type':'object'})
+    assert caught.value.failed_completion['response']['done_reason']=='length'
+    assert caught.value.failed_completion['request']['options']['num_predict']==config.output_tokens
+    assert 'value' not in caught.value.failed_completion

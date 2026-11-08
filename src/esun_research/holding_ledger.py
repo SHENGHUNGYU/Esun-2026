@@ -61,6 +61,11 @@ def candidates_for_settlement(store,pack,cutoff):
         matches.append({'run_id':row['run_id'],'plan_sha256':manifest['artifacts'][plan_name],
             'proposal':research['selected_evaluation']['proposal'],'plan':plan,
             'selection':research['selection'],'research':research})
+    from .decision_review import reported_submission
+    report=reported_submission(store,pack.team_id,pack.as_of_date,cutoff)
+    if report:
+        if report['event']['stage']!='submitted':return []
+        return [m for m in matches if m['run_id']==report['run_id'] and m['plan_sha256']==report['plan_hash']]
     return matches
 
 
@@ -151,12 +156,14 @@ def daily_hypotheses(research,pack,request):
         evidence={k:v for k,v in research.get('evidence',{}).items() if v.get('code')==code}
         order=orders.get(code)
         rows.append({'code':code,'intent':order['side'] if order else 'HOLD',
+            'thesis_check':research.get('decision_reviews',{}).get('H'+code),
             'reason':evaluation.get('continuity',{}).get('trade_reasons',{}).get(code,selection['reason']),
             'hypothesis':proposal['hypothesis'],'invalidation':proposal['failure_condition'],
             'new_evidence':evidence,'evidence_changes':research.get('holding_evidence_changes',{}).get(code,[]),'evidence_state':'observed_not_causal',
             'entry_thesis_overwritten':False,'execution_confirmed':False})
     return {'run_id':request['run_id'],'trade_date':request['trade_date'],'memory_ref':request.get('holding_memory_ref'),
-        'cross_day_review':selection.get('memory_review'),'rows':rows,
+        'cross_day_review':selection.get('memory_review'),'model_memory_comment':selection.get('model_memory_comment'),
+        'history_audit':research.get('history_audit'),'why_not_hold':selection.get('why_not_hold'),'why_not_gradual':selection.get('why_not_gradual'),'rows':rows,
         'news_evidence':research.get('news',[]),'status':'CANDIDATE_INTENT_NOT_EXECUTED'}
 
 
@@ -253,6 +260,13 @@ def portfolio_view(store,pack_id=None):
         if 'holding-review.json' in m['artifacts']:
             folder,_=candidate_bundle(store,path.parent.name)
             output['candidate_reviews'].append(json.loads((folder/'holding-review.json').read_bytes()))
+    from .pnl import replay
+    output['pnl_ledger']=replay(store,event,pack)
+    pnl_rows={r['code']:r for r in output['pnl_ledger']['rows']}
+    for row in output['holdings']:
+        if row['code'] in pnl_rows:row.update(pnl_rows[row['code']])
+    output['closed_positions']=[r for r in output['pnl_ledger']['rows'] if not r['shares']]
+    output['cost_authority']='mixed_evidence_and_estimates' if any(r.get('cost') is not None for r in output['holdings']) else 'missing'
     return output
 
 
@@ -260,9 +274,13 @@ def evidence_changes(memory,workspace):
     """Compare observed feature values, never turn a change into an invalidation verdict."""
     result={}
     for h in memory.get('holdings',[]):
-        last=h['recent_reviews'][-1] if h['recent_reviews'] else {}
-        prior=(last.get('local_hypothesis') or {}).get('feature_evidence',{})
-        old={v['feature']:v for v in prior.values() if v.get('feature')}
+        # A HOLD day can have no selected factors. Keep the last actually
+        # observed value per feature instead of erasing history with an empty day.
+        old={}
+        for prior in [(h.get('entry_thesis') or {}).get('feature_evidence',{}),
+                      *[(r.get('local_hypothesis') or {}).get('feature_evidence',{}) for r in h.get('recent_reviews',[])]]:
+            for v in prior.values():
+                if v.get('feature'):old[v['feature']]=v
         current=workspace.rows.get(h['code'],{})
         changes=[]
         for f in sorted(set(old)|set(current.get('values',{}))):

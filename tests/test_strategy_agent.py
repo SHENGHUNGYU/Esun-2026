@@ -20,7 +20,7 @@ def proposal(pid='growth',direction='higher',**extra):
     return {'proposal_id':pid,'name':'營收分散研究','hypothesis':'比較月營收年增率與當日可交易性，檢查短期配置假說是否可行。',
         'failure_condition':'營收高成長未必延續至獲利，若估值或消息反轉則假說失效。',
         'factors':[{'feature':'revenue_yoy_pct','direction':direction,'weight':'1','transform':'percentile'}],
-        'holdings':25,'cash_target':'.15','weighting':'equal',**extra}
+        'holdings':25,'cash_target':'.15','weighting':'equal','mode':'rebalance',**extra}
 
 
 def test_open_factor_composition_changes_positions_and_never_imputes_absent_flows(environment):
@@ -93,16 +93,13 @@ def test_failed_price_scenarios_are_visible_and_require_revision(environment):
         def complete(self,messages,schema):
             data=json.loads(messages[1]['content']);result=super().complete(messages,schema)
             if data['step'] in {4,5}:result['value']['proposal']['cash_target']='.22'
-            if data['step']==7:
+            if data['step']==6:
+                assert data['phase']=='evaluate'
                 assert not data['remaining_requirements']['locally_selectable_strategies']
-                assert 'evaluate' in data['remaining_requirements']['next_phase']
-                feedback=data['recent_tool_results'][-1]
-                assert feedback['error']=='selected_strategy_not_locally_feasible'
-                assert feedback['selected_evaluation']['stress_failure_details']
-                assert feedback['selected_evaluation']['locally_selectable'] is False
+                assert 'reverse' in data['evaluation_contract']['revisable_ids']
                 result['value']=action('evaluate',proposal=proposal('reverse','lower'))
-            if data['step']==8:
-                result['value']['comparisons'][1]['evidence_refs']=['T8']
+            if data['step']==7:
+                result['value']['comparisons'][1]['evidence_refs']=['T7']
             return result
     result=run_agent(environment,RepairModel())
     assert result['status']=='SELECTED' and result['selection']['selected_id']=='reverse'
@@ -139,8 +136,8 @@ def test_agent_selection_changes_real_dplan_orders_instead_of_only_narrative(env
     model=CompleteModel();result=generate_candidate(store,agent_req,sources,universe,model=model)
     assert result['status']=='CANDIDATE_BLOCKED_EXTERNAL_CHECKS'
     plan=store.json(result['plan'])['plan']
-    assert model.agent.calls==7 and model.calls==8
-    assert plan['agent_metadata']['input_tokens']==87 and plan['agent_metadata']['output_tokens']==167
+    assert model.agent.calls==7 and model.calls==26
+    assert plan['agent_metadata']['input_tokens']==267 and plan['agent_metadata']['output_tokens']==527
     assert plan['orders']!=baseline_orders
     assert any(o['ticker']=='1000' and o['side']=='BUY' for o in plan['orders'])
     folder=store.root/'candidates/agent-final';research=json.loads((folder/'agent-research.json').read_bytes())
@@ -166,7 +163,7 @@ def test_agent_selection_changes_real_dplan_orders_instead_of_only_narrative(env
         assert digest(archive.read('ETF_strategy.pdf'))==review['pdf_sha256']
         assert archive.read('Operator_guide.pdf')==guide.content
     generate_candidate(store,agent_req,sources,universe,model=model)
-    assert model.agent.calls==7 and model.calls==8
+    assert model.agent.calls==7 and model.calls==26
 
 
 def test_known_research_identifiers_are_not_fabricated_financial_numbers():
@@ -175,3 +172,21 @@ def test_known_research_identifiers_are_not_fabricated_financial_numbers():
     validate_action(good,{'P1','T3'})
     for reason in ['P999未通過壓力情境，先檢查其他策略的可用資料。','預期報酬可達99%，足以保證策略獲利並勝過市場。','P1保證獲利，因此不需要再進行任何風險檢查。']:
         with pytest.raises(ValueError):validate_action(ResearchAction.model_validate(action('inspect',reason=reason)),{'P1'})
+
+
+def test_omitted_execution_mode_is_repaired_instead_of_silently_using_rebalance(environment):
+    class MissingMode(ScriptedModel):
+        omitted=False
+        def complete(self,messages,schema):
+            result=super().complete(messages,schema)
+            if result['value']['tool']=='evaluate':
+                assert 'mode' in schema['$defs']['StrategyProposal']['required']
+                assert set(schema['properties'])=={'tool','reason','limitations','proposal'}
+                assert set(schema['$defs'])=={'StrategyProposal','Factor','Screen'}
+                assert 'default' not in schema['$defs']['StrategyProposal']['properties']['mode']
+                if not self.omitted:
+                    self.omitted=True;result['value']['proposal'].pop('mode')
+            return result
+    model=MissingMode();result=run_agent(environment,model)
+    assert result['status']=='SELECTED' and model.calls==8
+    assert any('proposal_execution_mode_required' in p.read_text() for p in environment[0].root.glob('agent-test/research-agent/call-*.json'))

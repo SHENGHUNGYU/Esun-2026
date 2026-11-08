@@ -66,11 +66,20 @@ class HoldModel(ScriptedModel):
     def complete(self,messages,schema):
         if 'step' not in json.loads(messages[1]['content']):return EvidenceModel().complete(messages,schema)
         data=json.loads(messages[1]['content'])
-        assert schema['properties']['codes']['maxItems']==12
-        assert schema['properties']['features']['items']['enum']
+        if data.get('phase') not in {'review','select','evaluate'}:
+            assert schema['properties']['codes']['maxItems']==12
+            assert schema['properties']['features']['items']['enum']
         if data['step']==0:assert 'revenue_yoy_pct' in schema['properties']['features']['items']['enum']
         if data['step']<6:return super().complete(messages,schema)
         self.calls+=1
+        if data.get('phase')=='review':
+            reviews=[{'review_id':p['review_id'],'verdict':('unknown' if not p.get('original_hypothesis') else 'weakened') if p['kind']=='holding' else 'uncertain',
+                'features':[r[0] for r in p.get('feature_rows',[]) if r[2] is not None][:2],
+                'evidence_refs':[p['review_id']],
+                'reason':'已核對本次觀測與可取得的歷史資料，但原始假說與訊號延續性仍存在不確定性，應保留未知與反證。',
+                'counter_evidence':'訊號方向尚未經過時間點一致的歷史驗證，不能視為未來報酬證據。',
+                'action_tradeoff':'續抱保留既有市場風險，漸進調整可改變曝險但產生成本；完整換股仍需要更強的證據。'} for p in data['review_batch']]
+            return {'value':action('review',reviews=reviews),'input_tokens':1,'output_tokens':1,'latency_seconds':0,'identity':{'digest':'a'*64}}
         comparisons=[{'proposal_id':r['proposal_id'],'evidence_refs':[r['required_evaluation_reference']],
             'reason':'以實際股數、成本與限制比較，未有足夠交易必要性，優先保留現有可交易部位。'} for r in data['selection_reference_contract']]
         return {'value':action('select',selected_id='BASE_HOLD',comparisons=comparisons,
@@ -78,18 +87,26 @@ class HoldModel(ScriptedModel):
             'input_tokens':1,'output_tokens':1,'latency_seconds':0,'identity':{'digest':'a'*64}}
 
 
-def test_agent_can_select_hold_through_full_pipeline_and_resume(environment):
+@pytest.mark.parametrize('prior_mode',['hold','risk_repair','gradual'])
+def test_agent_can_select_hold_through_full_pipeline_and_resume(environment,prior_mode):
     store,sources,universe,pack,policy,schema,req,snapshot,settings=settled(environment)
-    config=ModelConfig(base_url='http://127.0.0.1:11435',model='test-only',digest='a'*64)
+    config=ModelConfig(base_url='http://127.0.0.1:11435',model='test-only',digest='a'*64,context_tokens=12288,output_tokens=2400)
     req=req.model_copy(update={'run_id':'complete-hold','decision_engine':'llm_agent',
-        'agent_settings_ref':store.put_json(settings.model_dump(mode='json')),'llm_ref':store.put_json(config.model_dump())})
+        'agent_settings_ref':store.put_json(settings.model_dump(mode='json')),'llm_ref':store.put_json(config.model_dump()),
+        'previous_strategy_ref':store.put_json({'proposal':proposal('yesterday',mode=prior_mode,**({'factors':[]} if prior_mode!='gradual' else {}))})})
     result=generate_candidate(store,req,sources,universe,model=HoldModel())
     assert result['status']=='CANDIDATE_BLOCKED_EXTERNAL_CHECKS',result
     plan=store.json(result['plan'])['plan'];assert not plan['orders'] and len(plan['no_trade_decisions'])==25
     research=store.json(result['agent_research'])
     assert research['selection']['selected_id']=='BASE_HOLD'
     assert {'BASE_HOLD','BASE_REPAIR','BASE_PREVIOUS'}<=research['evaluations'].keys()
-    assert len(research['selection']['comparisons'])==5
+    assert len(research['selection']['comparisons'])==7
+    assert research['decision_reviews'] and all(r['input_ref'] for r in research['decision_reviews'].values())
+    assert all('strategy_rank' not in o['values'] for o in plan['observations'])
+    previous=store.json(research['evaluations']['BASE_PREVIOUS']['ref'])
+    assert previous['proposal']['mode']==prior_mode
+    assert not previous['errors']
+    if prior_mode=='hold':assert previous['orders']==[]
     assert generate_candidate(store,req,sources,universe,model=HoldModel())==result
 
 

@@ -88,7 +88,8 @@ class MemoryHoldModel(HoldModel):
         data=json.loads(messages[1]['content'])
         result=super().complete(messages,schema)
         if 'step' in data:
-            assert data['holding_memory']['holdings']
+            if data.get('phase')=='review':assert data['review_batch']
+            else:assert data['holding_memory']['holdings']
             if result['value']['tool']=='select':
                 assert 'memory_review' in schema['required']
                 result['value']['memory_review']='原持股進場理由尚缺唯一歷史證據，本次沒有足以證明失效的新資訊；在成本與限制檢查可行下先續抱，仍持續觀察風險。'
@@ -98,7 +99,8 @@ class MemoryHoldModel(HoldModel):
 def test_memory_reaches_model_and_daily_review_is_immutable(environment):
     store,sources,universe,p,policy,schema,req,snapshot,settings=settled(environment)
     save(store,p);memory=review_memory(store,p,'2026-10-28T23:00:00+08:00')
-    config=ModelConfig(base_url='http://127.0.0.1:11435',model='test-only',digest='a'*64)
+    # Seven-way comparison plus history uses the qualified runtime window.
+    config=ModelConfig.model_validate_json(Path('config/llm-local.json').read_bytes()).model_copy(update={'model':'test-only','digest':'a'*64})
     req=req.model_copy(update={'run_id':'memory-hold','decision_engine':'llm_agent',
         'holding_memory_ref':store.put_json(memory),'agent_settings_ref':store.put_json(settings.model_dump(mode='json')),
         'llm_ref':store.put_json(config.model_dump())})

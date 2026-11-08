@@ -40,6 +40,7 @@ class DecisionRequest(RunRequest):
     research_data_ref: str | None = None
     previous_strategy_ref: str | None = None
     holding_memory_ref: str | None = None
+    research_continuation_ref: str | None = None
 
 class State(TypedDict,total=False):
     snapshot: str
@@ -168,6 +169,7 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models,r
     if research:
         selected_codes=set(targets)|set(held)
         evidence_ids={eid for c in ranked if c['code'] in selected_codes for ids in c.get('research_evidence',{}).values() for eid in ids}
+        evidence_ids.update(eid for p in research.get('review_packets',{}).values() if p.get('code') in selected_codes for eid in p.get('source_evidence',{}))
         for eid in sorted(evidence_ids):
             for row in research['evidence'][eid].get('rows',[]):
                 sid=row['source_id']
@@ -215,6 +217,9 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models,r
                 lineage[oid]={'derivation':'deduplicated blocked securities within this cited source group; groups cannot be added',
                     'risk_feed_refs':{sid:risk['feed_refs'][sid] for sid in group},
                     'market_risk_states':{c:risk['securities'][c] for c in members}}
+    # HOLD/REPAIR rows are tied at zero and ordered by ticker, not by alpha.
+    scored=not research or bool(research['selected_evaluation']['proposal'].get('factors'))
+    strategy_rank={r['code']:i+1 for i,r in enumerate(ranked)} if scored else {}
     research_observations=[]
     if research:
         selected=research['selected_evaluation'];refs=sorted({smap[row['source_id']] for eid in evidence_ids for row in research['evidence'][eid].get('rows',[])}) or sorted({smap[q['source_id']] for q in quote_by.values()})
@@ -237,6 +242,7 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models,r
     for code in involved:
         q=quote_by[code];c=bycode.get(code);oid='O'+str(len(observations)+1)
         values={'reference_close_twd':float(decimal(prices[code])),'daily_amount_twd':float(decimal(q['values']['amount']))}
+        if code in strategy_rank:values['strategy_rank']=strategy_rank[code]
         refs={smap[q['source_id']]};raw=[q]
         if c:
             if not research or research['selected_evaluation']['proposal'].get('factors'):
@@ -277,17 +283,37 @@ def compile_document(snapshot,ranked,targets,pack,policy,request,source_models,r
         if research:
             lineage[oid]['score_formula']=research['selected_evaluation']['proposal']['factors']
             lineage[oid]['feature_evidence']=c.get('research_evidence',{}) if c else {}
+        review_refs=[]
+        review_id='H'+code
+        if research and review_id in research.get('decision_reviews',{}):
+            packet=research['review_packets'][review_id];review=research['decision_reviews'][review_id]['value']
+            roid='O'+str(len(observations)+1)
+            current={row[0]:float(decimal(row[2])) for row in packet['feature_rows'] if row[2] is not None}
+            if not current:current={'observed_feature_count':0}
+            rrefs=sorted({smap[row['source_id']] for e in packet['source_evidence'].values() for row in e.get('rows',[])}) or [smap[q['source_id']]]
+            if len(rrefs)>10:raise ValueError('holding_review_exceeds_source_reference_limit')
+            # Official observations cite raw current data. Historical source rows
+            # and the original thesis remain bound in lineage and the audit file.
+            observations.append({'obs_id':roid,'source_ref':rrefs,'topic':'holding_thesis_review',
+                'statement':'個股 '+code+' 的跨日檢查；以下為模型判斷，不是官方結論或預測。狀態：'+review['verdict']+'；'+review['reason']+' 取捨：'+review['action_tradeoff'],
+                'values':current})
+            lineage[roid]={'review':review,'input_ref':research['decision_reviews'][review_id]['input_ref'],
+                'input_hash':packet['input_hash'],'source_evidence':packet['source_evidence'],'previous_source_rows':packet['previous_source_rows'],
+                'original_hypothesis':packet['original_hypothesis'],'original_invalidation':packet['original_invalidation']}
+            review_refs.append(roid)
         iid='I'+str(len(inferences)+1)
         selected=code in targets
         logic=(f'依{policy.version}對正營收成長、正本益比與流動性作百分位加權排序，並限制產業集中及整張預算；'
                +('本檔進入分散候選，依固定等權政策換算目標部位。' if selected else '本檔未進入本次完整資料且分散限制下的候選，依規則退出可交易部位，不代表預測一定下跌。'))
         if research:
-            logic='LLM自主研究比較後選定「'+research['selected_evaluation']['proposal']['name']+'」，以其因子、篩選與配置方案計算排名、產業分散與整張部位；'+('本檔進入該方案配置。' if selected else '本檔未進入本次選定方案，依該方案調整部位，不代表預測必然下跌。')
+            logic='LLM自主研究比較後選定「'+research['selected_evaluation']['proposal']['name']+'」，以其因子、篩選與配置方案核對產業分散與整張部位；'+('本檔進入該方案配置。' if selected else '本檔未進入本次選定方案，依該方案調整部位，不代表預測必然下跌。')
+            if not c and selected and code in held:
+                logic='本檔維持官方既有股數；完整選定因子或新買條件未通過，不依資料缺漏推論應賣出，仍須通過組合與交易限制。'
         if research and research['selected_evaluation'].get('continuity'):
             reason=research['selected_evaluation']['continuity']['trade_reasons'].get(code,'未通過交易必要性檢查，保留原股數。')
             logic=(('本次選擇續抱或必要風險修正方案。 '+reason) if not research['selected_evaluation']['proposal'].get('factors') else logic+' '+reason)
         risk_refs=risk_observations.get(models[q['source_id']].provider.upper(),[]) if risk else []
-        inferences.append({'inf_id':iid,'premise_refs':[oid,'O1',*risk_refs,*research_observations],'logic':logic,
+        inferences.append({'inf_id':iid,'premise_refs':[oid,'O1',*risk_refs,*research_observations,*review_refs],'logic':logic,
           'counter_evidence':'單月成長、本益比與單日流動性無法驗證完整品質或長期趨勢；未完成樣本外績效驗證。'})
         old=held.get(code,0);weight=targets.get(code,0);new=target_shares(weight,pack.account.nav_tradable,prices[code])
         if new==old:
@@ -380,6 +406,14 @@ def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpoin
             workspace=ResearchWorkspace(snap,pack,base_policy,AgentSettings.model_validate(store.json(req['agent_settings_ref'])),extra)
             recomputed=jsonable(workspace.evaluate(research['selected_evaluation']['proposal']))
             if 'cost_twd' in recomputed:recomputed['cost_fraction_nav']=str(decimal(recomputed['cost_twd'])/pack.account.nav_tradable)
+            parent=research['selected_evaluation'].get('comparison_parent')
+            if parent:
+                from .decision_review import alternative_id
+                parent_proposal=store.json(research['evaluations'][parent]['ref'])['proposal']
+                expected={**parent_proposal,'proposal_id':alternative_id(parent),'mode':'gradual',
+                    'weighting':'rank_tilt','name':'同因子漸進配置對照'}
+                if expected!=research['selected_evaluation']['proposal']:raise ValueError('agent_gradual_parent_mismatch')
+                recomputed['comparison_parent']=parent
             if recomputed!=research['selected_evaluation']:raise ValueError('agent_selected_evaluation_mismatch')
             if jsonable(expected_ranked)!=recomputed['ranking'] or store.json(state['allocation'])!=recomputed['targets']:raise ValueError('agent_selection_not_applied')
         expected_plan,_,_=compile_document(snap,expected_ranked,store.json(state['allocation']),pack,policy,req,sources,research)
@@ -450,20 +484,39 @@ def graph_for(store,request,sources,universe,frozen,pack,policy,schema,checkpoin
         outputs['policy.json']=encoded(effective_policy(state).model_dump(mode='json'))
         if state.get('agent_research'):
             research=research_for(state);outputs['agent-research.json']=encoded(research)
+            if research.get('market_state'):outputs['market-state.json']=encoded(research['market_state'])
+            if research.get('signal_analysis'):
+                from .market_signals import analysis_markdown
+                outputs['short-horizon-signals.json']=encoded(research['signal_analysis'])
+                outputs['short-horizon-signals.md']=analysis_markdown(research['signal_analysis']).encode()
+            if research.get('decision_origin'):outputs['decision-origin.json']=encoded(research['decision_origin'])
+            if research.get('research_origin'):outputs['research-origin.json']=encoded(research['research_origin'])
             if req.get('holding_memory_ref'):outputs['holding-memory.json']=store.read(req['holding_memory_ref'])
+            if research.get('history_audit'):outputs['history-audit.json']=encoded(research['history_audit'])
             if research.get('selection'):
                 from .holding_ledger import daily_hypotheses
                 outputs['holding-review.json']=encoded(daily_hypotheses(research,pack,req))
+                from .thesis_review import review_markdown
+                outputs['decision-reviews.json']=encoded({'packets':research.get('review_packets',{}),'reviews':research.get('decision_reviews',{})})
+                outputs['decision-reviews.md']=review_markdown(research.get('review_packets',{}),research.get('decision_reviews',{})).encode()
             outputs['agent-call-evidence.json']=encoded([store.json(ref) for ref in research['call_refs']])
             lines=['# LLM自主策略比較','',f'研究狀態：{research["status"]}','', '這是資料快照、成本與情境比較；不是PIT策略績效回測。','']
             for pid,e in research['evaluations'].items():
                 evaluation=store.json(e['ref']);p=evaluation['proposal']
+                if evaluation.get('cash_deployment'):
+                    lines += ['現金試探：'+json.dumps(evaluation['cash_deployment'],ensure_ascii=False),'']
+                if evaluation.get('risk_comparison'):
+                    risk_metrics=evaluation['risk_comparison']
+                    lines += ['### 調整前後風險（描述性）','','|指標|續抱現有部位|本方案|','|---|---|---|']
+                    lines += ['|'+k+'|'+str(a)+'|'+str(b)+'|' for k,a,b in zip(risk_metrics['columns'],risk_metrics['before'],risk_metrics['after'])]
+                    lines += ['','缺資料部位：'+','.join(risk_metrics['missing_after'])+'；'+risk_metrics['scope'],'']
                 lines += ['## '+p['name'],'',p['hypothesis'],'',f'評估參照：{e["tool_id"]}；可投資檔數：{evaluation["eligible_count"]}；本地錯誤：'+(', '.join(evaluation['errors']) or '無'),'',
                     '因子組合：'+json.dumps(p['factors'],ensure_ascii=False),'',
                     '委託筆數：'+str(len(evaluation.get('orders',[])))+'；費稅：'+str(evaluation.get('cost_twd','未通過'))+'；買賣合計／NAV：'+str(evaluation.get('turnover_notional_fraction','未通過')),'',
                     '失效條件：'+p['failure_condition'],'']
             if research.get('selection'):
                 lines+=['## 自主選擇','',research['selection']['reason'],'','交易必要性：'+(research['selection'].get('trade_justification') or '本次無交易，或為首日建立部位。'),'']
+                lines+=['與不交易比較：'+(research['selection'].get('why_not_hold') or '無交易，或不適用。'),'','與同因子漸進配置比較：'+(research['selection'].get('why_not_gradual') or '本次採漸進／無交易，或不適用。'),'']
                 lines += ['- '+c['proposal_id']+'：'+c['reason'] for c in research['selection']['comparisons']]
                 lines+=['','## 資料及績效限制','']+['- '+x for x in research['selection']['limitations']]
             outputs['selection-diagnostics.json']=encoded({pid:store.json(e['ref']).get('diagnostics') for pid,e in research['evaluations'].items()})

@@ -43,3 +43,16 @@ ssh -o BatchMode=yes -o ConnectTimeout=8 nelson@192.168.157.135 'sysctl -n hw.me
 - 原始清單：`planning/SERVER.md`。
 - 初次測試與公鑰安裝指令：`planning/SERVER_TEST_2026-10-24.md`；該文件中的認證失敗是初次測試結果，後續重測狀態以本檔及該文件的重測紀錄為準。
 - 內網位址、設備使用量與連線紀錄留在本地文件；不要隨一般網站規劃文件自動發布。
+
+## 正式執行端（2026-11-04 已搬移）
+
+- 正式工作台與資料已遷到 `nelson@120.107.172.133`，Docker Compose 專案 `esun-agent-prod`，容器 `esun-agent-prod-workbench-1`。Docker 服務開機啟動、容器 restart policy 為 unless-stopped。
+- 主機程式 release：`/home/nelson/esun-agent/releases/20261105-progress-v3/snapshot`；私有 Compose 環境：`/home/nelson/esun-agent/settings/20261105-progress-v3.env`；目前 release 記錄：`/home/nelson/esun-agent/settings/active-release.json`。
+- 正式資料主機路徑：`/home/nelson/esun-agent/data/20261104-r01/artifacts/llm-agent-20261027`；歷史資料為同層 `artifacts/history-202604-202609`；D-Plan 在 `/home/nelson/esun-agent/data/20261104-r01/output/dplans`。
+- 容器內保留原專案根路徑 `/Users/nelson/ncue/AICUP/Esun`，維持舊封存資料的絕對路徑相容性。新正式 CLI 工作應在遠端容器執行；讀取目前候選、結算與工作狀態也以遠端為準。
+- 本機 `artifacts/llm-agent-20261027` 留作唯讀快照，存在 `maintenance-readonly.json`；不要刪除該標記或在本機重新建立第二個正式寫入端。原本機 launchd 應用 `com.esun.agent-workbench` 已停用。
+- 使用者仍從 `http://127.0.0.1:8766/` 開啟工作台，由本機 launchd `com.esun.agent-remote-tunnel` 經 SSH 轉送至遠端 loopback。plist 在 `~/Library/LaunchAgents/com.esun.agent-remote-tunnel.plist`。此通道僅供 UI 存取；遠端應用執行不依賴 Mac 開機。
+- 遠端應用沿用主機既有 Ollama `127.0.0.1:11434` 與已核對 digest；容器不配置 GPU、不另開第二份模型。主機 GPU 限制仍依上表。
+- 新 release 更新應重新建置並驗證容器，切換時保留單一寫入者。回退前先暫停遠端並同步新增資料，不得把過期本機快照直接當最新正式帳戶。
+- 搬移備份與驗收證據：本機 `output/migration/20261104-r01/`；遠端 `artifacts/migration-smoke/20261104-r01/`。備份含未提交的工作目錄，不能只 git clone 舊 HEAD 取代正式程式。
+- 一般部署說明見 `delivery/REMOTE_DEPLOYMENT.md`；以上 IP、主機路徑及設備資料只留本地／私有遠端，不發布到規劃網站。
